@@ -370,3 +370,37 @@ test('journal des modifications, plafonné à 300 entrées', async () => {
   assert.equal(h[0].from, 5);
   assert.equal(h[299].to, 305);
 });
+
+test('recettes : calories et macros par part', async () => {
+  const { recipeTotals, recipeFood } = await import('../js/nutrition.js');
+  // riz blanc cuit (code 9104 : 145 kcal/100 g) × 200 g, poulet cuit (36018, 110 kcal/100 g cru)… on vérifie le calcul par part
+  const r = { id: 'r', name: 'Riz', parts: 2, ingredients: [{ code: 9104, name: 'Riz', grams: 200 }] };
+  const t = recipeTotals(r);
+  assert.equal(t.total.kcal, 290);
+  assert.equal(t.perPart.kcal, 145);
+  assert.equal(t.weight, 200);
+  const food = recipeFood(r);
+  assert.equal(food.k, 145);
+  assert.equal(food.c, 'Mes recettes');
+  // une recette sans ingrédient ne plante pas
+  assert.equal(recipeTotals({ parts: 1, ingredients: [] }).perPart.kcal, 0);
+});
+
+test('liste de courses, réserve sorties et alerte protéines', async () => {
+  const { shoppingList, eatOutReserve, proteinAlert } = await import('../js/nutrition.js');
+  const state = emptyState();
+  state.profile = { ...profile, eatOutPercent: 10 };
+  state.days['2026-10-26'] = { meals: [{ name: 'Pain', kcal: 100 }, { name: 'Œuf', kcal: 70, eatOut: true }] };
+  state.days['2026-10-28'] = { meals: [{ name: 'Pain', kcal: 100 }, { name: 'Pâtes', kcal: 300, eatOut: true }] };
+  state.days['2026-10-20'] = { meals: [{ name: 'Ancien', kcal: 1 }] }; // semaine précédente : exclu
+  const list = shoppingList(state, '2026-10-28');
+  assert.deepEqual(list.map((i) => [i.name, i.count]), [['Pain', 2], ['Œuf', 1], ['Pâtes', 1]]);
+  const res = eatOutReserve(state, '2026-10-28', 2000);
+  assert.deepEqual([res.total, res.used, res.left], [1400, 370, 1030]);
+  assert.equal(eatOutReserve({ profile: { eatOutPercent: 0 }, days: {} }, '2026-10-28', 2000).total, 0);
+  const foods = [{ n: 'Poulet', p: '100 g', k: 165, prot: 31 }, { n: 'Pain', p: '1 tranche', k: 90, prot: 3 }, { n: 'Skyr', p: '150 g', k: 95, prot: 16 }];
+  assert.equal(proteinAlert(60, 130, foods).missing, 70);
+  assert.equal(proteinAlert(120, 130, foods), null);
+  assert.equal(proteinAlert(60, 130, foods).picks[0].name, 'Poulet');
+  assert.equal(proteinAlert(100, 130, foods), null); // au-dessus de 70 % : pas d'alerte
+});

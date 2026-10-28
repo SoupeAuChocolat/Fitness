@@ -2,9 +2,10 @@
 // code-barres (Open Food Facts) et aliments perso.
 import * as store from '../store.js';
 import { dailyTarget, dayTotals, frequentFoods } from '../calc.js';
-import { addDays } from '../dates.js';
+import { addDays, todayKey } from '../dates.js';
 import { canScan, lookupBarcode, scanBarcode } from '../barcode.js';
 import { CIQUAL_FOODS, COMMON_FOODS, portionValues, searchFoods } from '../foods.js';
+import { eatOutReserve, proteinAlert, recipeFood, recipeTotals, shoppingList } from '../nutrition.js';
 import { bindActions, dateNav, esc, ICON, nf, openSheet, parseNum, progressBar, toast } from '../ui.js';
 
 export const MEALS = [
@@ -35,7 +36,7 @@ function saveCustomFood(food) {
 function openAddFood(date, mealId) {
   const state = store.get();
   const custom = state.customFoods.map((f) => ({ ...f, c: f.barcode ? 'Produits scannés' : 'Mes aliments' }));
-  const quick = [...custom, ...COMMON_FOODS];
+  const quick = [...custom, ...(state.recipes || []).map(recipeFood), ...COMMON_FOODS];
   const frequent = frequentFoods(state, date);
   let meal = mealId;
   let shown = [];
@@ -150,6 +151,7 @@ function openAddFood(date, mealId) {
                 <strong data-portions>1</strong>
                 <button class="icon-btn" data-step="0.5" aria-label="Plus">${ICON.plus}</button>
               </div></div>`}
+          <label class="check-line"><input type="checkbox" data-eatout> Compter dans la réserve « sorties »</label>
           <div class="callout center"><span class="callout-big" data-total></span><span class="small" data-macros></span></div>
           <button class="btn btn-primary btn-block" data-add>Ajouter au ${mealLabel()}</button>`;
         show('qty');
@@ -182,7 +184,7 @@ function openAddFood(date, mealId) {
             if (v.kcal <= 0 && f.k > 0) return toast('Indique une quantité', { icon: '⚠️' });
             const qty = byGram ? `${nf(parseNum(qtyEl.value) || 0)} g` : portions === 1 ? f.p || '1 portion' : `${nf(portions, 1)} portions · ${f.p || ''}`;
             if (f.barcode) saveCustomFood(stripUi(f));
-            addItem(date, { meal, name: f.n, qty, ...v });
+            addItem(date, { meal, name: f.n, qty, ...v, ...(panels.qty.querySelector('[data-eatout]')?.checked ? { eatOut: true } : {}) });
             toast(`Ajouté : ${f.n}`, { icon: '✅' });
             close();
           }
@@ -274,6 +276,142 @@ function stripUi(food) {
   return rest;
 }
 
+
+const HUNGER = [1, 2, 3, 4, 5];
+const isFavorite = (state, meal, name) => (state.favorites || []).some((f) => f.meal === meal && f.name === name);
+
+// --- Recettes -------------------------------------------------------------------------
+
+function openRecipes() {
+  const list = store.get().recipes || [];
+  openSheet({
+    title: 'Mes recettes',
+    className: 'sheet-tall',
+    html: `
+      <button class="btn btn-primary btn-block" data-new>+ Nouvelle recette</button>
+      ${list.length ? list.map((r) => {
+        const t = recipeTotals(r);
+        return `<div class="list-item">
+          <span class="grow"><strong>${esc(r.name)}</strong><small>${r.parts} part${r.parts > 1 ? 's' : ''} · ${nf(t.perPart.kcal)} kcal par part · P ${nf(t.perPart.prot)} g</small></span>
+          <button class="icon-btn" data-edit="${r.id}" aria-label="Modifier">${ICON.edit}</button>
+          <button class="icon-btn" data-del="${r.id}" aria-label="Supprimer">${ICON.trash}</button>
+        </div>`;
+      }).join('') : '<p class="muted small">Aucune recette. Compose-la avec des ingrédients de la table CIQUAL : les calories sont calculées pour toi, par part.</p>'}`,
+    onMount(body, close) {
+      body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-new]')) {
+          close();
+          openRecipeEditor(null);
+          return;
+        }
+        const ed = e.target.closest('[data-edit]');
+        if (ed) {
+          close();
+          openRecipeEditor(store.get().recipes.find((r) => r.id === ed.dataset.edit));
+          return;
+        }
+        const del = e.target.closest('[data-del]');
+        if (del) {
+          store.update((s) => (s.recipes = s.recipes.filter((r) => r.id !== del.dataset.del)));
+          close();
+          openRecipes();
+        }
+      });
+    },
+  });
+}
+
+function openRecipeEditor(recipe) {
+  const draft = recipe ? structuredClone(recipe) : { id: store.uid(), name: '', parts: 4, ingredients: [] };
+  openSheet({
+    title: recipe ? 'Modifier la recette' : 'Nouvelle recette',
+    className: 'sheet-tall',
+    html: `
+      <label class="field"><span>Nom</span><input class="input" data-name value="${esc(draft.name)}" placeholder="Ex. Gratin de courgettes"></label>
+      <label class="field"><span>Nombre de parts</span><input class="input" inputmode="numeric" data-parts value="${draft.parts}"></label>
+      <div class="field"><span>Ingrédients</span><div data-ings></div></div>
+      <input class="input" type="search" data-q placeholder="Chercher un ingrédient (table CIQUAL)…" autocomplete="off">
+      <div class="pick-list" data-list></div>
+      <div class="callout center" data-totals></div>
+      <button class="btn btn-primary btn-block" data-save>Enregistrer la recette</button>`,
+    onMount(body, close) {
+      const $ = (sel) => body.querySelector(sel);
+      const parts = () => Math.max(1, Math.round(parseNum($('[data-parts]').value)) || 1);
+      const drawIngredients = () => {
+        $('[data-ings]').innerHTML = draft.ingredients.length
+          ? draft.ingredients.map((g, i) => `<div class="list-item">
+              <span class="grow"><strong>${esc(g.name)}</strong></span>
+              <input class="input input-sm" inputmode="numeric" data-g="${i}" value="${g.grams}" aria-label="Grammes">
+              <span class="unit">g</span>
+              <button class="icon-btn" data-rm="${i}" aria-label="Retirer">${ICON.x}</button>
+            </div>`).join('')
+          : '<p class="muted small">Aucun ingrédient pour l’instant.</p>';
+        const t = recipeTotals({ ...draft, parts: parts() });
+        $('[data-totals]').innerHTML = `<span class="callout-big">${nf(t.perPart.kcal)} kcal par part</span>
+          <span class="small">P ${nf(t.perPart.prot)} g · G ${nf(t.perPart.carb)} g · L ${nf(t.perPart.fat)} g · poids total ${nf(t.weight)} g</span>`;
+      };
+      $('[data-q]').addEventListener('input', (e) => {
+        const q = e.target.value.trim();
+        const found = q.length >= 2 ? searchFoods(CIQUAL_FOODS, q, 25) : [];
+        $('[data-list]').innerHTML = found.map((f) => `<button class="pick" data-add="${f.ciqual}">
+          <span class="grow"><strong>${esc(f.n)}</strong><small>${nf(f.k)} kcal pour 100 g</small></span></button>`).join('');
+      });
+      body.addEventListener('click', (e) => {
+        const add = e.target.closest('[data-add]');
+        if (add) {
+          const food = CIQUAL_FOODS.find((f) => String(f.ciqual) === add.dataset.add);
+          draft.ingredients.push({ code: food.ciqual, name: food.n, grams: 100 });
+          $('[data-q]').value = '';
+          $('[data-list]').innerHTML = '';
+          drawIngredients();
+        }
+        const rm = e.target.closest('[data-rm]');
+        if (rm) {
+          draft.ingredients.splice(Number(rm.dataset.rm), 1);
+          drawIngredients();
+        }
+      });
+      body.addEventListener('input', (e) => {
+        if (e.target.matches('[data-g]')) {
+          draft.ingredients[Number(e.target.dataset.g)].grams = Math.max(0, parseNum(e.target.value) || 0);
+          drawIngredients();
+        }
+      });
+      $('[data-parts]').addEventListener('input', drawIngredients);
+      $('[data-save]').addEventListener('click', () => {
+        const name = $('[data-name]').value.trim();
+        if (!name) return toast('Donne un nom à la recette', { icon: '⚠️' });
+        if (!draft.ingredients.length) return toast('Ajoute au moins un ingrédient', { icon: '⚠️' });
+        const saved = { ...draft, name, parts: parts() };
+        store.update((s) => {
+          s.recipes ||= [];
+          const i = s.recipes.findIndex((r) => r.id === saved.id);
+          if (i >= 0) s.recipes[i] = saved;
+          else s.recipes.push(saved);
+        });
+        close();
+        toast(`Recette « ${name} » enregistrée`, { icon: '🍲' });
+      });
+      drawIngredients();
+    },
+  });
+}
+
+// --- Liste de courses ----------------------------------------------------------------
+
+function openShopping(today) {
+  const items = shoppingList(store.get(), today);
+  openSheet({
+    title: 'Liste de courses',
+    html: items.length
+      ? `<p class="small muted">D’après les repas notés depuis lundi. Coche ce que tu as acheté.</p>
+         ${items.map((it) => `<label class="check-line"><input type="checkbox"><span class="grow">${esc(it.name)}</span><small class="muted">× ${it.count}</small></label>`).join('')}`
+      : '<p class="muted">Aucun repas noté cette semaine.</p>',
+  });
+}
+
+// --- Vue ------------------------------------------------------------------------------
+
 export function render(root, ctx) {
   const { state, ui } = ctx;
   const key = ui.date;
@@ -283,6 +421,8 @@ export function render(root, ctx) {
   const t = dayTotals(day);
   const yesterday = state.days[addDays(key, -1)] || {};
   const left = target - t.eaten;
+  const reserve = (state.profile?.eatOutPercent ?? 10) > 0 ? eatOutReserve(state, key, goal.base) : null;
+  const alert = key === todayKey() ? proteinAlert(t.prot, goal.protein, COMMON_FOODS) : null;
 
   root.innerHTML = `
     ${dateNav(key)}
@@ -295,19 +435,40 @@ export function render(root, ctx) {
         <span class="muted">Glucides ${nf(t.carb)} g · Lipides ${nf(t.fat)} g</span></div>
       ${progressBar(t.prot / goal.protein)}
       ${t.noMacros ? `<p class="small muted">${t.noMacros} aliment${t.noMacros > 1 ? 's' : ''} sans détail des macros.</p>` : ''}
+      ${reserve ? `<p class="small">🍽️ Réserve « sorties » : <strong>${nf(reserve.left)} kcal</strong> disponibles cette semaine (${nf(reserve.used)} / ${nf(reserve.total)} utilisées)</p>` : ''}
     </section>
+
+    ${alert ? `
+    <section class="card plateau-card">
+      <div class="card-head"><h2>🥩 Il te manque ${nf(alert.missing)} g de protéines</h2></div>
+      <p class="small">Pour protéger tes muscles, pense à un de ces aliments :</p>
+      <ul class="tips small">${alert.picks.map((p) => `<li>${esc(p.name)} (${esc(p.portion)}) : ${nf(p.prot)} g</li>`).join('')}</ul>
+    </section>` : ''}
+
+    <div class="btn-row">
+      <button class="btn grow" data-act="recipes">🍲 Mes recettes</button>
+      <button class="btn grow" data-act="shopping">🛒 Liste de courses</button>
+    </div>
 
     ${MEALS.map((m) => {
       const items = (day.meals || []).filter((x) => x.meal === m.id);
       const sub = items.reduce((s, x) => s + x.kcal, 0);
       const yItems = (yesterday.meals || []).filter((x) => x.meal === m.id);
+      const favs = (state.favorites || []).filter((f) => f.meal === m.id);
+      const hunger = (day.hunger || {})[m.id];
       return `
         <section class="card">
           <div class="card-head"><h2>${m.icon} ${m.label}</h2><span class="small muted">${nf(sub)} kcal</span></div>
+          <div class="hunger">
+            <small class="muted">Faim avant de manger</small>
+            <div class="hunger-btns">${HUNGER.map((v) => `<button class="${hunger === v ? 'on' : ''}" data-act="hunger" data-meal="${m.id}" data-v="${v}" aria-label="Faim ${v} sur 5" aria-pressed="${hunger === v}">${v}</button>`).join('')}</div>
+          </div>
+          ${favs.length ? `<div class="chips fav-chips">${favs.map((f) => `<button class="chip" data-act="favAdd" data-id="${f.id}">⭐ ${esc(f.name)} · ${nf(f.kcal)}</button>`).join('')}</div>` : ''}
           ${items.map((x) => `
             <div class="list-item">
-              <span class="grow"><strong>${esc(x.name)}</strong><small>${esc(x.qty || '')}${x.prot != null ? ` · P ${nf(x.prot)} g` : ''}</small></span>
+              <span class="grow"><strong>${esc(x.name)}</strong><small>${esc(x.qty || '')}${x.prot != null ? ` · P ${nf(x.prot)} g` : ''}${x.eatOut ? ' · 🍽️ sortie' : ''}</small></span>
               <b>${nf(x.kcal)}</b>
+              <button class="icon-btn" data-act="fav" data-id="${x.id}" aria-label="${isFavorite(state, m.id, x.name) ? 'Retirer des favoris' : 'Ajouter aux favoris'}">${isFavorite(state, m.id, x.name) ? '⭐' : '☆'}</button>
               <button class="icon-btn" data-act="del" data-id="${x.id}" aria-label="Supprimer ${esc(x.name)}">${ICON.trash}</button>
             </div>`).join('')}
           <div class="btn-row">
@@ -340,6 +501,39 @@ export function render(root, ctx) {
         items.forEach((x) => d.meals.push({ ...x, id: store.uid() }));
       });
       toast(`${items.length} aliment${items.length > 1 ? 's' : ''} copié${items.length > 1 ? 's' : ''}`, { icon: '↺' });
+    },
+    hunger(el) {
+      const meal = el.dataset.meal;
+      const v = Number(el.dataset.v);
+      store.update((s) => {
+        const d = (s.days[key] ||= {});
+        const cur = { ...(d.hunger || {}) };
+        if (cur[meal] === v) delete cur[meal];
+        else cur[meal] = v;
+        d.hunger = cur;
+      });
+    },
+    fav(el) {
+      const item = day.meals.find((x) => x.id === el.dataset.id);
+      store.update((s) => {
+        s.favorites ||= [];
+        const i = s.favorites.findIndex((f) => f.meal === item.meal && f.name === item.name);
+        if (i >= 0) s.favorites.splice(i, 1);
+        else s.favorites.push({ id: store.uid(), meal: item.meal, name: item.name, qty: item.qty, kcal: item.kcal, prot: item.prot ?? null, carb: item.carb ?? null, fat: item.fat ?? null });
+      });
+      toast(isFavorite(store.get(), item.meal, item.name) ? 'Ajouté aux favoris ⭐' : 'Retiré des favoris', { icon: '⭐' });
+    },
+    favAdd(el) {
+      const f = (state.favorites || []).find((x) => x.id === el.dataset.id);
+      if (!f) return;
+      addItem(key, { meal: f.meal, name: f.name, qty: f.qty, kcal: f.kcal, prot: f.prot, carb: f.carb, fat: f.fat });
+      toast(`Ajouté : ${f.name}`, { icon: '⭐' });
+    },
+    recipes() {
+      openRecipes();
+    },
+    shopping() {
+      openShopping(key);
     },
   });
 }

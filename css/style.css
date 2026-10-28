@@ -820,3 +820,9 @@ details.card.ex-detail { padding: 6px 16px; }
 .lg-line.s2 { background: var(--series-2); }
 .plateau-card { border-left: 4px solid var(--warn); }
 .forecast { background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; margin-top: 8px; font-size: 0.92rem; }
+.hunger { margin: 2px 0 8px; }
+.hunger-btns { display: flex; gap: 6px; margin-top: 4px; }
+.hunger-btns button { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface-2); font-weight: 700; }
+.hunger-btns button.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.fav-chips { margin-bottom: 8px; }
+.check-line input:checked + span { text-decoration: line-through; color: var(--muted); }

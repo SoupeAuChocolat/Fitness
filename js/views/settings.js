@@ -96,6 +96,7 @@ export function render(root, ctx) {
       <div class="grid-2">
         <label class="field"><span>Calories de base (vide = auto)</span><input class="input" inputmode="numeric" data-f="kcalOverride" value="${p.kcalOverride || ''}" placeholder="${nf(t.auto)}"></label>
         <label class="field"><span>Protéines g / jour (vide = auto)</span><input class="input" inputmode="numeric" data-f="proteinGoal" value="${p.proteinGoal || ''}" placeholder="${nf(proteinTarget({ ...p, proteinGoal: null }))}"></label>
+        <label class="field"><span>Réserve « sorties » par semaine</span><select class="input" data-f="eatOutPercent">${[0, 10, 15, 20].map((n) => `<option value="${n}" ${(p.eatOutPercent ?? 10) === n ? 'selected' : ''}>${n === 0 ? 'Aucune' : `${n} % du budget`}</option>`).join('')}</select></label>
         <label class="field"><span>Séances de sport par semaine</span><select class="input" data-f="weekGoal">${[3, 4, 5].map((n) => `<option value="${n}" ${(p.weekGoal ?? 5) === n ? 'selected' : ''}>${n} séances</option>`).join('')}</select></label>
         <label class="field"><span>Eau (verres / jour)</span><input class="input" inputmode="numeric" data-f="waterGoal" value="${p.waterGoal}"></label>
         <label class="field"><span>Taille d’un verre (ml)</span><input class="input" inputmode="numeric" data-f="glassMl" value="${p.glassMl}"></label>
@@ -202,6 +203,7 @@ export function render(root, ctx) {
           kcalOverride: kcal ? Math.round(kcal) : null,
           proteinGoal: protein ? Math.round(protein) : null,
           weekGoal: Number(val('weekGoal')),
+          eatOutPercent: Number(val('eatOutPercent')),
           waterGoal: Math.round(num('waterGoal')),
           glassMl: Math.round(num('glassMl')),
           stepsGoal: Math.round(num('stepsGoal')),

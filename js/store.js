@@ -30,6 +30,8 @@ export function emptyState() {
     reminders: structuredClone(DEFAULT_REMINDERS),
     setupDismissed: false,
     history: [],
+    favorites: [],
+    recipes: [],
   };
 }
 
@@ -38,7 +40,7 @@ function normalize(s) {
   const out = { ...emptyState(), ...s };
   out.reminders = { ...structuredClone(DEFAULT_REMINDERS), ...(s.reminders || {}) };
   if (out.profile) {
-    out.profile = { stepsMode: 'budget', teethTracker: true, proteinGoal: null, weekGoal: 5, ...out.profile };
+    out.profile = { stepsMode: 'budget', teethTracker: true, proteinGoal: null, weekGoal: 5, eatOutPercent: 10, ...out.profile };
   }
   return out;
 }
