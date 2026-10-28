@@ -1,0 +1,10 @@
+{
+  "name": "ma-forme",
+  "private": true,
+  "type": "module",
+  "description": "Application web (PWA) de suivi : poids, repas, sport et arrêt des mauvaises habitudes.",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/*.test.js"
+  }
+}
