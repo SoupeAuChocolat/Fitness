@@ -1,5 +1,5 @@
 // Thèmes visuels : défaut (clair/sombre auto), Cyberpunk, Solo Leveling.
-import { SystemBars } from './native.js';
+import { MaFormeWidget, SystemBars } from './native.js';
 
 const KEY = 'ma-forme-theme';
 export const THEMES = [
@@ -26,6 +26,8 @@ export function applyTheme(id = getTheme()) {
     if (!m.dataset.orig) m.dataset.orig = m.content;
     m.content = BAR_COLOR[id] || m.dataset.orig;
   }
+  // Icône du lanceur et écran de démarrage (Android) : pris en compte au prochain lancement.
+  MaFormeWidget?.setLauncherTheme({ theme: id }).catch?.(() => {});
   SystemBars?.setStyle({ style: id === 'default' ? 'DEFAULT' : 'DARK' })?.catch?.(() => {});
 }
 

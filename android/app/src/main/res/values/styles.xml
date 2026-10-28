@@ -22,4 +22,18 @@
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
+
+    <style name="AppTheme.NoActionBarLaunch.Cyberpunk" parent="Theme.SplashScreen">
+        <item name="android:background">@color/ic_launcher_background_cyberpunk</item>
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_cyberpunk</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_cyberpunk_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+
+    <style name="AppTheme.NoActionBarLaunch.Solo" parent="Theme.SplashScreen">
+        <item name="android:background">@color/ic_launcher_background_solo</item>
+        <item name="windowSplashScreenBackground">@color/ic_launcher_background_solo</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_solo_foreground</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
 </resources>

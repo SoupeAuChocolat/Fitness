@@ -17,17 +17,71 @@
             android:launchMode="singleTask"
             android:exported="true">
 
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
             <!-- Connexion Santé : écran expliquant l'usage des données (obligatoire) -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
 
         </activity>
+
+        <!-- Variantes de l'écran de démarrage selon le thème -->
+        <activity
+            android:name=".MainActivityCyberpunk"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch.Cyberpunk"
+            android:launchMode="singleTask"
+            android:exported="false" />
+        <activity
+            android:name=".MainActivitySolo"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch.Solo"
+            android:launchMode="singleTask"
+            android:exported="false" />
+
+        <!-- Icônes du lanceur : une seule est activée, selon le thème -->
+        <activity-alias
+            android:name=".LauncherDefault"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/title_activity_main"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherCyberpunk"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_cyberpunk"
+            android:roundIcon="@mipmap/ic_launcher_cyberpunk_round"
+            android:label="@string/title_activity_main"
+            android:targetActivity=".MainActivityCyberpunk">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherSolo"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_solo"
+            android:roundIcon="@mipmap/ic_launcher_solo_round"
+            android:label="@string/title_activity_main"
+            android:targetActivity=".MainActivitySolo">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Widget d'écran d'accueil -->
         <receiver
