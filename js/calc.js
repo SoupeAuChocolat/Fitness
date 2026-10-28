@@ -337,3 +337,95 @@ export function weekSummary(state, start, today, targetFor) {
     habits,
   };
 }
+
+// --- Prévision de la date d'objectif -----------------------------------------------
+// Régression sur les 21 derniers jours. La marge vient de l'erreur standard de la pente :
+// date « au plus tôt » (pente plus forte) et « au plus tard » (pente plus faible).
+export function goalForecast(points, goal, today) {
+  const recent = points.filter((p) => p.x <= today && diffDays(p.x, today) <= 21);
+  if (recent.length < 5 || diffDays(recent[0].x, recent[recent.length - 1].x) < 14) return null;
+  const first = recent[0].x;
+  const xs = recent.map((p) => diffDays(first, p.x));
+  const ys = recent.map((p) => p.y);
+  const n = xs.length;
+  const mx = avg(xs);
+  const my = avg(ys);
+  let sxx = 0;
+  let sxy = 0;
+  xs.forEach((x, i) => {
+    sxx += (x - mx) ** 2;
+    sxy += (x - mx) * (ys[i] - my);
+  });
+  const slope = sxy / sxx; // kg par jour
+  const intercept = my - slope * mx;
+  const rss = ys.reduce((s, y, i) => s + (y - (intercept + slope * xs[i])) ** 2, 0);
+  const se = Math.sqrt(rss / (n - 2)) / Math.sqrt(sxx);
+  const last = recent[recent.length - 1].x;
+  const fitted = intercept + slope * xs[xs.length - 1];
+  const perWeek = slope * 7;
+  if (fitted <= goal) return { perWeek, reached: true };
+  if (slope >= -0.005) return { perWeek, reached: false, central: null };
+  const dateFor = (s) => {
+    if (s >= 0) return null;
+    const d = addDays(last, Math.ceil((fitted - goal) / -s));
+    return diffDays(today, d) < 3 * 365 ? d : null;
+  };
+  return {
+    perWeek,
+    reached: false,
+    central: dateFor(slope),
+    early: dateFor(slope - se),
+    late: dateFor(slope + se),
+    marginWeeks: (se * 7) / Math.abs(perWeek) || 0,
+  };
+}
+
+// --- Plateau ------------------------------------------------------------------------
+// Moyennes de pesée sur les 3 dernières semaines : plateau si l'écart reste sous 0,3 kg.
+export function plateauInfo(state, today) {
+  const points = series(state, 'weight').filter((p) => p.x <= today);
+  const windows = [0, 1, 2].map((k) => {
+    const from = addDays(today, -7 * (k + 1) + 1);
+    const to = addDays(today, -7 * k);
+    const ys = points.filter((p) => p.x >= from && p.x <= to).map((p) => p.y);
+    return ys.length ? avg(ys) : null;
+  });
+  const full = windows.filter((v) => v != null);
+  if (full.length < 3) return { plateau: false };
+  const spread = Math.max(...full) - Math.min(...full);
+  if (spread >= 0.3) return { plateau: false, spread };
+  return { plateau: true, spread, advice: plateauAdvice(state, today) };
+}
+
+function plateauAdvice(state, today) {
+  const keys = keysBetween(addDays(today, -20), today);
+  const logged = keys.filter((k) => (state.days[k]?.meals || []).length).length;
+  if (logged < 14) {
+    return { kind: 'meals', text: `Tu as noté tes repas ${logged} jour${logged > 1 ? 's' : ''} sur 21 : les calories manquantes faussent le bilan. Note tout pendant une semaine.` };
+  }
+  const workouts = keys.filter((k) => (state.days[k]?.workouts || []).length).length;
+  const target = (state.profile?.weekGoal ?? 5) * 3;
+  if (workouts < target * 0.6) {
+    return { kind: 'sport', text: `Tu as fait ${workouts} séance${workouts > 1 ? 's' : ''} sur 3 semaines (objectif : ${target}). Ajoute une séance par semaine pendant deux semaines.` };
+  }
+  return { kind: 'deload', text: 'Repas et sport sont réguliers : prends une semaine plus légère (une séance en moins, marche tranquille) pour relancer le corps.' };
+}
+
+// --- Sommeil et craquages ----------------------------------------------------------
+// Taux de jours avec craquage sucre ou alcool, après une nuit courte (< 6,5 h) ou non.
+export function sleepVsFails(state, today) {
+  const habits = state.habits.filter((h) => !h.archived && (h.preset === 'sugar' || h.preset === 'alcohol'));
+  if (!habits.length) return null;
+  const keys = keysBetween(addDays(today, -59), today).filter((k) => state.days[k]?.sleep != null);
+  const buckets = { short: { n: 0, fails: 0 }, ok: { n: 0, fails: 0 } };
+  for (const k of keys) {
+    const b = state.days[k].sleep < 6.5 ? buckets.short : buckets.ok;
+    b.n++;
+    if (habits.some((h) => h.log?.[k] === 'fail')) b.fails++;
+  }
+  if (buckets.short.n < 5 || buckets.ok.n < 5) return null;
+  return {
+    short: { n: buckets.short.n, rate: buckets.short.fails / buckets.short.n },
+    ok: { n: buckets.ok.n, rate: buckets.ok.fails / buckets.ok.n },
+  };
+}

@@ -20,6 +20,7 @@ function addItem(date, item) {
   store.update((s) => {
     const d = (s.days[date] ||= {});
     (d.meals ||= []).push({ id: store.uid(), ...item, kcal: Math.round(item.kcal) });
+    store.logChange(date, 'meal+', null, item.name);
   });
 }
 
@@ -327,6 +328,7 @@ export function render(root, ctx) {
       const item = day.meals.find((x) => x.id === el.dataset.id);
       store.update((s) => {
         s.days[key].meals = s.days[key].meals.filter((x) => x.id !== el.dataset.id);
+        store.logChange(key, 'meal-', item.name, null);
       });
       toast(`Supprimé : ${item.name}`, { icon: '🗑️' });
     },

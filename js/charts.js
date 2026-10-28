@@ -178,3 +178,59 @@ export function renderBarChart(el, { bars, target, targetLabel = 'Objectif', uni
     };
   });
 }
+
+// Plusieurs séries sur un même axe, exprimées en variation (%) depuis leur première mesure.
+// Permet de comparer poids et tour de taille sans double axe.
+export function renderIndexChart(el, series, { height = 200 } = {}) {
+  el.classList.add('chart');
+  const ready = series.filter((s) => s.points.length >= 2);
+  if (!ready.length) {
+    el.innerHTML = '<p class="chart-empty">Ajoute au moins 2 mesures pour voir la courbe.</p>';
+    return;
+  }
+  const width = Math.max(260, el.clientWidth || 320);
+  const iw = width - PAD.left - PAD.right;
+  const ih = height - PAD.top - PAD.bottom;
+  const dates = ready.flatMap((s) => s.points.map((p) => p.x)).sort();
+  const first = dates[0];
+  const span = Math.max(1, diffDays(first, dates[dates.length - 1]));
+  const lines = ready.map((s, i) => {
+    const base = s.points[0].y;
+    return { ...s, cls: i === 0 ? '' : 's2', pts: s.points.map((p) => ({ x: p.x, v: ((p.y - base) / base) * 100, y: p.y })) };
+  });
+  const vals = lines.flatMap((l) => l.pts.map((p) => p.v));
+  const { lo, hi, ticks } = niceTicks(Math.min(0, ...vals) - 0.5, Math.max(0, ...vals) + 0.5);
+  const X = (key) => PAD.left + (diffDays(first, key) / span) * iw;
+  const Y = (v) => PAD.top + ih - ((v - lo) / (hi - lo)) * ih;
+  const grid = ticks
+    .map((t) => `<line class="c-grid" x1="${PAD.left}" x2="${width - PAD.right}" y1="${Y(t)}" y2="${Y(t)}"/>
+      <text class="c-tick" x="${PAD.left - 6}" y="${Y(t) + 4}" text-anchor="end">${nf(t, 0)} %</text>`)
+    .join('');
+  const paths = lines
+    .map((l) => `<path class="c-line ${l.cls}" d="${l.pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.x).toFixed(1)},${Y(p.v).toFixed(1)}`).join('')}"/>
+      ${l.pts.map((p) => `<circle class="c-dot ${l.cls}" cx="${X(p.x)}" cy="${Y(p.v)}" r="3.5"/>`).join('')}`)
+    .join('');
+  const last = dates[dates.length - 1];
+  const xLabels = [first, last].map((k, i) => `<text class="c-tick" x="${X(k)}" y="${height - 6}" text-anchor="${i ? 'end' : 'start'}">${formatShort(k)}</text>`).join('');
+  el.innerHTML = `
+    <div class="chart-legend">${lines.map((l) => `<span><i class="lg-line ${l.cls}"></i>${esc(l.name)}</span>`).join('')}</div>
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Variation du poids et du tour de taille">
+      ${grid}
+      <line class="c-base" x1="${PAD.left}" x2="${width - PAD.right}" y1="${Y(0)}" y2="${Y(0)}"/>
+      <line class="c-cross" x1="0" x2="0" y1="${PAD.top}" y2="${PAD.top + ih}"/>
+      ${paths}${xLabels}
+    </svg>`;
+  const svg = el.querySelector('svg');
+  setupTooltip(el, svg, (x) => {
+    const key = dates.reduce((best, d) => (Math.abs(X(d) - x) < Math.abs(X(best) - x) ? d : best), dates[0]);
+    if (Math.abs(X(key) - x) > 40) return null;
+    const html = lines
+      .map((l) => {
+        const p = l.pts.find((q) => q.x === key);
+        return p ? `${esc(l.name)} : ${p.v >= 0 ? '+' : ''}${nf(p.v, 1)} % (${nf(p.y, 1)} ${esc(l.unit)})` : null;
+      })
+      .filter(Boolean)
+      .join('<br>');
+    return { cx: X(key), cy: PAD.top + 10, html: `<strong>${formatShort(key)}</strong><br>${html}` };
+  });
+}

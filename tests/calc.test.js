@@ -308,3 +308,65 @@ test('km estimés et séances de la semaine', async () => {
   state.days['2026-10-30'] = { rest: true };
   assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 4, remaining: 0 });
 });
+
+test('prévision de la date d’objectif à partir de la vraie tendance', async () => {
+  const { goalForecast } = await import('../js/calc.js');
+  // -0,1 kg par jour, pas de bruit : 21 jours de pesées depuis le 1er octobre
+  const pts = Array.from({ length: 21 }, (_, i) => ({ x: addDays('2026-10-01', i), y: 90 - i * 0.1 }));
+  const f = goalForecast(pts, 80, '2026-10-21');
+  assert.ok(Math.abs(f.perWeek + 0.7) < 1e-9);
+  // dernière valeur 88 kg (21 octobre) ; il reste 8 kg à 0,1 kg/jour = 80 jours
+  assert.equal(f.central, addDays('2026-10-21', 80));
+  // sans bruit, la marge est nulle : fourchette réduite à une date
+  assert.equal(f.early, f.central);
+  assert.equal(goalForecast(pts, 95, '2026-10-21').reached, true);
+  assert.equal(goalForecast(pts.slice(0, 3), 80, '2026-10-21'), null);
+});
+
+test('plateau : stagnation sur 3 semaines et conseil', async () => {
+  const { plateauInfo } = await import('../js/calc.js');
+  const state = emptyState();
+  state.profile = { ...profile, weekGoal: 5 };
+  // une pesée par jour pendant 21 jours, poids stable à 85
+  for (let i = 0; i < 21; i++) {
+    const k = addDays('2026-10-01', i);
+    state.days[k] = { weight: 85 + (i % 2) * 0.1, meals: [{ kcal: 500 }] };
+  }
+  const info = plateauInfo(state, '2026-10-21');
+  assert.equal(info.plateau, true);
+  assert.equal(info.advice.kind, 'sport'); // aucune séance notée : ajouter du sport
+  // poids qui baisse : pas de plateau
+  for (let i = 0; i < 21; i++) state.days[addDays('2026-10-01', i)].weight = 85 - i * 0.1;
+  assert.equal(plateauInfo(state, '2026-10-21').plateau, false);
+});
+
+test('sommeil et craquages : taux après nuit courte ou non', async () => {
+  const { sleepVsFails } = await import('../js/calc.js');
+  const state = emptyState();
+  state.profile = profile;
+  state.habits = [{ id: 'h', preset: 'sugar', name: 'Sucre', icon: '🍬', startDate: '2026-09-01', log: {} }];
+  for (let i = 0; i < 20; i++) {
+    const k = addDays('2026-10-01', i);
+    const short = i % 2 === 0;
+    state.days[k] = { sleep: short ? 5.5 : 7.5 };
+    // craquage uniquement après nuit courte
+    if (short && i % 4 === 0) state.habits[0].log[k] = 'fail';
+  }
+  const r = sleepVsFails(state, '2026-10-20');
+  assert.equal(r.short.n, 10);
+  assert.equal(r.ok.n, 10);
+  assert.equal(r.ok.rate, 0);
+  assert.ok(r.short.rate > 0);
+  // pas assez de données : rien n'est affiché
+  assert.equal(sleepVsFails(emptyState(), '2026-10-20'), null);
+});
+
+test('journal des modifications, plafonné à 300 entrées', async () => {
+  const store = await import('../js/store.js');
+  store.replace({ profile: profile, days: {} });
+  for (let i = 0; i < 305; i++) store.update((s) => store.logChange('2026-10-28', 'steps', i, i + 1), { silent: true });
+  const h = store.get().history;
+  assert.equal(h.length, 300);
+  assert.equal(h[0].from, 5);
+  assert.equal(h[299].to, 305);
+});

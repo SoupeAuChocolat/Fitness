@@ -29,6 +29,7 @@ export function emptyState() {
     health: { enabled: false, lastSync: null, lastSyncDay: null },
     reminders: structuredClone(DEFAULT_REMINDERS),
     setupDismissed: false,
+    history: [],
   };
 }
 
@@ -76,6 +77,13 @@ export function subscribe(fn) {
 export const setErrorHandler = (fn) => (onError = fn);
 
 export const ensureDay = (key) => (state.days[key] ||= {});
+
+// Journal des modifications : une entrée par saisie, 300 au maximum.
+export function logChange(date, field, from, to) {
+  state.history ||= [];
+  state.history.push({ t: Date.now(), date, field, from, to });
+  if (state.history.length > 300) state.history.splice(0, state.history.length - 300);
+}
 
 export function replace(next) {
   state = normalize(next);

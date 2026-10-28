@@ -8,7 +8,7 @@ import { connectHealth, healthAvailable, syncHealth } from '../health.js';
 import { isNative } from '../native.js';
 import { isTrainingType, planForDate } from '../program.js';
 import { applyReminders, enableReminders } from '../reminders.js';
-import { bindActions, dateNav, esc, fmtKg, ICON, nf, parseNum, plural, progressBar, toast } from '../ui.js';
+import { bindActions, dateNav, esc, fmtKg, ICON, nf, openSheet, parseNum, plural, progressBar, toast } from '../ui.js';
 import { openActivitySheet } from './sport.js';
 import { startPlanned } from './workout.js';
 
@@ -19,6 +19,13 @@ function greeting(name) {
 }
 
 const TEETH_SLOTS = ['Matin', 'Midi', 'Soir'];
+
+const HISTORY_LABELS = {
+  weight: 'Poids', waist: 'Tour de taille', steps: 'Pas', sleep: 'Sommeil', water: 'Verres d’eau',
+  teeth: 'Brossage de dents', rest: 'Jour de repos', 'meal+': 'Repas ajouté', 'meal-': 'Repas supprimé',
+};
+const formatTime = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const showValue = (v) => (v == null ? '—' : Array.isArray(v) ? v.map((b) => (b ? '✓' : '·')).join(' ') : typeof v === 'number' ? nf(v, 1) : String(v));
 
 function setupCard(state) {
   const health = state.health.enabled;
@@ -191,14 +198,18 @@ export function render(root, ctx) {
       </div>
       ${day.rest ? '<p class="small muted">😴 Jour de repos choisi : il ne compte pas dans ton objectif de la semaine.</p><button class="btn btn-link btn-block" data-act="restDay" data-v="">Finalement, je m’entraîne</button>'
         : isTrainingType(plan.type) && !(day.workouts || []).length ? '<button class="btn btn-link btn-block" data-act="restDay" data-v="1">😴 Marquer comme jour de repos</button>' : ''}
-    </section>`;
+    </section>
+
+    <button class="btn btn-link btn-block" data-act="history">🕘 Historique des modifications de ce jour</button>`;
 
   // manual : la valeur saisie à la main ne sera plus remplacée par Connexion Santé
   const setField = (field, value, { fromInput = false, manual = false } = {}) => {
+    const before = store.get().days[key]?.[field];
     store.update((s) => {
       const d = store.ensureDay(key);
       if (value == null) delete d[field];
       else d[field] = value;
+      if (before !== value) store.logChange(key, field, before ?? null, value ?? null);
       if (manual) {
         d.manual = { ...d.manual, [field]: value != null };
         if (d.sync) delete d.sync[field];
@@ -263,6 +274,15 @@ export function render(root, ctx) {
       const ok = await enableReminders();
       toast(ok ? 'Rappels activés' : 'Notifications refusées : autorise-les dans les réglages Android', { icon: '🔔', duration: 4000 });
       ctx.rerender();
+    },
+    history() {
+      const entries = (state.history || []).filter((e) => e.date === key).reverse();
+      openSheet({
+        title: 'Historique du jour',
+        html: entries.length
+          ? entries.map((e) => `<div class="list-item"><span class="grow"><strong>${esc(HISTORY_LABELS[e.field] || e.field)}</strong><small>${esc(formatTime(e.t))} · ${esc(showValue(e.from))} → ${esc(showValue(e.to))}</small></span></div>`).join('')
+          : '<p class="muted">Aucune modification enregistrée pour ce jour.</p>',
+      });
     },
     restDay(el) {
       setField('rest', el.dataset.v ? true : null);

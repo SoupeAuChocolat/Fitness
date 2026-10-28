@@ -815,3 +815,8 @@ details.card.ex-detail { padding: 6px 16px; }
 }
 
 .week-count { font-size: 0.95rem; color: var(--accent-strong); white-space: nowrap; }
+.c-line.s2 { stroke: var(--series-2); }
+.c-dot.s2 { fill: var(--series-2); opacity: 0.6; }
+.lg-line.s2 { background: var(--series-2); }
+.plateau-card { border-left: 4px solid var(--warn); }
+.forecast { background: var(--accent-soft); border-radius: 12px; padding: 10px 12px; margin-top: 8px; font-size: 0.92rem; }

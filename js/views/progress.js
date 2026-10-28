@@ -1,9 +1,9 @@
 // Onglet Progrès : courbes, bilan de la semaine, badges.
 import { computeBadges } from '../badges.js';
 import {
-  bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, movingAverage, series, stepsKm, weekSummary, weightTrend,
+  bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, goalForecast, movingAverage, plateauInfo, series, sleepVsFails, stepsKm, weekSummary, weightTrend,
 } from '../calc.js';
-import { renderBarChart, renderLineChart } from '../charts.js';
+import { renderBarChart, renderIndexChart, renderLineChart } from '../charts.js';
 import { addDays, diffDays, formatDayMonth, formatFull, formatShort, todayKey, weekdayShort, weekStart } from '../dates.js';
 import { bindActions, esc, fmtKg, ICON, nf } from '../ui.js';
 
@@ -106,6 +106,11 @@ export function render(root, ctx) {
   const groups = [...new Set(badges.map((b) => b.group))];
   const earned = badges.filter((b) => b.ok).length;
 
+  const forecast = goalForecast(weights, p.goalWeight, today);
+  const plateau = plateauInfo(state, today);
+  const sleepStats = sleepVsFails(state, today);
+  const pct = (x) => `${nf(x * 100, 0)} %`;
+
   root.innerHTML = `
     <section class="card">
       <div class="card-head"><h2>⚖️ Poids</h2>
@@ -117,10 +122,33 @@ export function render(root, ctx) {
         <div class="tile"><small>Reste</small><strong>${nf(Math.max(0, current - p.goalWeight), 1)} kg</strong></div>
       </div>
       <div id="chart-weight"></div>
-      ${trend ? `<p class="small">Tendance sur 4 semaines : <strong>${trend.perWeek <= 0 ? '−' : '+'}${nf(Math.abs(trend.perWeek), 2)} kg / semaine</strong>${trend.goalDate ? `<br>À ce rythme, objectif atteint vers le <strong>${formatFull(trend.goalDate)}</strong> 🎯` : ''}</p>`
+      ${forecast && !forecast.reached && forecast.central ? `<div class="forecast">📅 Au rythme actuel (−${nf(Math.abs(forecast.perWeek), 2)} kg / semaine) : objectif vers le <strong>${formatFull(forecast.central)}</strong>${forecast.early && forecast.late ? `<br><small class="muted">Fourchette réaliste : du ${formatFull(forecast.early)} au ${forecast.late ? formatFull(forecast.late) : 'plus tard'}</small>` : ''}</div>` : forecast && forecast.reached ? '<div class="forecast">🏆 Objectif de poids atteint.</div>' : trend ? `<p class="small">Tendance : ${trend.perWeek <= 0 ? '−' : '+'}${nf(Math.abs(trend.perWeek), 2)} kg / semaine</p>` : '<p class="small muted">Pèse-toi régulièrement pour voir ta tendance et ta date d’objectif.</p>'}
         : '<p class="small muted">Pèse-toi régulièrement (idéalement le matin à jeun) pour voir ta tendance.</p>'}
       <p class="small muted">IMC : ${nf(bmi(current, p.heightCm), 1)} — ${bmiLabel(bmi(current, p.heightCm))}</p>
     </section>
+
+    ${plateau.plateau ? `
+    <section class="card plateau-card">
+      <div class="card-head"><h2>⏸️ Poids stable depuis 3 semaines</h2></div>
+      <p class="small">Ta moyenne de poids bouge de moins de 0,3 kg. ${esc(plateau.advice.text)}</p>
+    </section>` : ''}
+
+    <section class="card">
+      <div class="card-head"><h2>📉 Poids et tour de taille</h2></div>
+      <p class="small muted">Variation depuis ta première mesure, en pourcentage : les deux mesures sont comparables sur une même échelle.</p>
+      <div id="chart-index"></div>
+    </section>
+
+    ${sleepStats ? `
+    <section class="card">
+      <div class="card-head"><h2>😴 Sommeil et craquages</h2></div>
+      <p class="small">Jours avec craquage sucre ou alcool :</p>
+      <div class="tiles">
+        <div class="tile"><small>Nuit courte (< 6,5 h)</small><strong>${pct(sleepStats.short.rate)}</strong><small>${sleepStats.short.n} jours</small></div>
+        <div class="tile"><small>Nuit suffisante</small><strong>${pct(sleepStats.ok.rate)}</strong><small>${sleepStats.ok.n} jours</small></div>
+      </div>
+      ${sleepStats.short.rate > sleepStats.ok.rate + 0.1 ? '<p class="small">Après une nuit courte, tu craques plus souvent : protège ton sommeil les jours à risque.</p>' : ''}
+    </section>` : ''}
 
     ${waist.length ? `
     <section class="card">
@@ -188,6 +216,10 @@ export function render(root, ctx) {
       <button class="btn btn-link btn-block" data-act="allBadges">${allBadges ? 'Afficher seulement les badges obtenus et les prochains' : 'Voir tous les badges'}</button>
     </section>`;
 
+  renderIndexChart(root.querySelector('#chart-index'), [
+    { name: 'Poids', unit: 'kg', points: weights.filter(keep) },
+    { name: 'Tour de taille', unit: 'cm', points: waist.filter(keep) },
+  ], { height: 190 });
   renderLineChart(root.querySelector('#chart-weight'), {
     points: wPoints, trend: wTrend, goal: p.goalWeight, unit: 'kg', pointLabel: 'Pesée', trendLabel: 'Moyenne 7 jours',
   });
