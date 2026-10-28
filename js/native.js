@@ -12,5 +12,6 @@ export const Filesystem = plugin('Filesystem');
 export const Share = plugin('Share');
 export const BarcodeScanner = plugin('BarcodeScanner');
 export const HealthConnect = plugin('HealthConnect');
+export const MaFormeWidget = plugin('MaFormeWidget');
 export const CapacitorHttp = isNative ? globalThis.capacitorExports?.CapacitorHttp ?? null : null;
 export const SystemBars = isNative ? globalThis.capacitorExports?.SystemBars ?? null : null;

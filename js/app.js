@@ -5,6 +5,7 @@ import { addDays, todayKey } from './dates.js';
 import { syncHealth } from './health.js';
 import { App, isNative, SystemBars } from './native.js';
 import { applyReminders, onReminderTap } from './reminders.js';
+import { pushWidget } from './widget.js';
 import { closeTopSheet, esc, ICON, toast } from './ui.js';
 import * as habit from './views/habit.js';
 import * as habits from './views/habits.js';
@@ -129,6 +130,7 @@ function render() {
   }
 
   renderChrome(name, state);
+  if (isNative) pushWidget(state);
   const view = document.getElementById('view');
   const fresh = document.createElement('div');
   fresh.className = `view view-${name}`;
@@ -162,6 +164,7 @@ function init() {
       render();
     }
     syncHealth().catch(() => {});
+    if (isNative) applyReminders(store.get().reminders).catch(() => {});
   };
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && onResume());
 

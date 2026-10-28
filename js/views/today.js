@@ -6,8 +6,8 @@ import { QUOTES } from '../data/quotes.js';
 import { openFailSheet, openSosPicker, toggleOk } from '../habit-actions.js';
 import { connectHealth, healthAvailable, syncHealth } from '../health.js';
 import { isNative } from '../native.js';
-import { planForDate } from '../program.js';
-import { enableReminders } from '../reminders.js';
+import { isTrainingType, planForDate } from '../program.js';
+import { applyReminders, enableReminders } from '../reminders.js';
 import { bindActions, dateNav, esc, fmtKg, ICON, nf, parseNum, plural, progressBar, toast } from '../ui.js';
 import { openActivitySheet } from './sport.js';
 import { startPlanned } from './workout.js';
@@ -189,6 +189,8 @@ export function render(root, ctx) {
             <button class="btn ${state.program.place === 'gym' ? 'btn-primary' : ''} grow" data-act="start" data-place="gym">🏋️ En salle</button>`
           : `<button class="btn btn-primary grow" data-act="activity">+ Noter une activité</button>`}
       </div>
+      ${day.rest ? '<p class="small muted">😴 Jour de repos choisi : il ne compte pas dans ton objectif de la semaine.</p><button class="btn btn-link btn-block" data-act="restDay" data-v="">Finalement, je m’entraîne</button>'
+        : isTrainingType(plan.type) && !(day.workouts || []).length ? '<button class="btn btn-link btn-block" data-act="restDay" data-v="1">😴 Marquer comme jour de repos</button>' : ''}
     </section>`;
 
   // manual : la valeur saisie à la main ne sera plus remplacée par Connexion Santé
@@ -261,6 +263,10 @@ export function render(root, ctx) {
       const ok = await enableReminders();
       toast(ok ? 'Rappels activés' : 'Notifications refusées : autorise-les dans les réglages Android', { icon: '🔔', duration: 4000 });
       ctx.rerender();
+    },
+    restDay(el) {
+      setField('rest', el.dataset.v ? true : null);
+      applyReminders(store.get().reminders).catch(() => {});
     },
     dismissSetup() {
       store.update((s) => (s.setupDismissed = true));

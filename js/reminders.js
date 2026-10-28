@@ -1,6 +1,8 @@
 // Rappels (notifications locales Android, sans serveur).
 import * as store from './store.js';
+import { isTrainingType, planForDate, weekTraining } from './program.js';
 import { WEEK_PLAN } from './data/exercises.js';
+import { todayKey } from './dates.js';
 import { LocalNotifications } from './native.js';
 
 export const remindersAvailable = () => !!LocalNotifications;
@@ -68,8 +70,31 @@ export async function applyReminders(r) {
   if (notifications.length) await LocalNotifications.cancel({ notifications: notifications.map((n) => ({ id: n.id })) });
   if (!r.enabled || (await notificationPermission()) !== 'granted') return 0;
   const list = buildNotifications(r);
+  const weekly = weeklyReminder();
+  if (weekly) list.push(weekly);
   if (list.length) await LocalNotifications.schedule({ notifications: list });
   return list.length;
+}
+
+// Rappel de 19 h 30 le jour d'entraînement non noté, si la semaine n'est pas encore atteinte.
+function weeklyReminder(today = todayKey()) {
+  const s = store.get();
+  if (!s.profile || !s.program) return null;
+  const plan = planForDate(today, s.program);
+  const day = s.days[today] || {};
+  const week = weekTraining(s, today);
+  if (!isTrainingType(plan.type) || day.rest || (day.workouts || []).length || week.remaining === 0) return null;
+  const at = new Date();
+  at.setHours(19, 30, 0, 0);
+  if (at <= new Date()) return null;
+  const left = week.remaining;
+  return {
+    id: 500,
+    title: '🎯 Objectif de la semaine',
+    body: `Séance du jour pas encore notée. Il te reste ${left} séance${left > 1 ? 's' : ''} cette semaine.`,
+    schedule: { at },
+    extra: { route: 'sport' },
+  };
 }
 
 // Demande l'autorisation d'afficher des notifications puis programme les rappels.

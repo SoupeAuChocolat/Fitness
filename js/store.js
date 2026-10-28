@@ -37,7 +37,7 @@ function normalize(s) {
   const out = { ...emptyState(), ...s };
   out.reminders = { ...structuredClone(DEFAULT_REMINDERS), ...(s.reminders || {}) };
   if (out.profile) {
-    out.profile = { stepsMode: 'budget', teethTracker: true, proteinGoal: null, ...out.profile };
+    out.profile = { stepsMode: 'budget', teethTracker: true, proteinGoal: null, weekGoal: 5, ...out.profile };
   }
   return out;
 }

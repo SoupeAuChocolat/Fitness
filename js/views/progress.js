@@ -1,7 +1,7 @@
 // Onglet Progrès : courbes, bilan de la semaine, badges.
 import { computeBadges } from '../badges.js';
 import {
-  bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, movingAverage, series, weekSummary, weightTrend,
+  bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, movingAverage, series, stepsKm, weekSummary, weightTrend,
 } from '../calc.js';
 import { renderBarChart, renderLineChart } from '../charts.js';
 import { addDays, diffDays, formatDayMonth, formatFull, formatShort, todayKey, weekdayShort, weekStart } from '../dates.js';
@@ -19,12 +19,13 @@ function delta(cur, prev, { digits = 0, unit = '', lowerIsBetter = false } = {})
   return `<span class="${good ? 'good-text' : 'bad-text'}">${d > 0 ? '▲' : '▼'} ${nf(Math.abs(d), digits)}${unit}</span>`;
 }
 
-function summaryRows(sum, prev, teeth) {
+function summaryRows(sum, prev, teeth, goal) {
   const rows = [
     ['⚖️ Poids moyen', sum.weightAvg != null ? fmtKg(sum.weightAvg) : '—', delta(sum.weightAvg, prev?.weightAvg, { digits: 1, unit: ' kg', lowerIsBetter: true })],
     ['🍽️ Calories / jour', sum.kcalAvg != null ? `${nf(sum.kcalAvg)} kcal` : '—', sum.mealDays ? `<small class="muted">${sum.underTarget}/${sum.mealDays} j sous l’objectif</small>` : ''],
     ['🥩 Protéines / jour', sum.protAvg != null ? `${nf(sum.protAvg)} g` : '—', delta(sum.protAvg, prev?.protAvg, { unit: ' g' })],
     ['💪 Sport', `${sum.workouts} séance${sum.workouts > 1 ? 's' : ''} · ${sum.sportMin} min`, delta(sum.sportMin, prev?.sportMin, { unit: ' min' })],
+    ['🎯 Séances / objectif', `${sum.workouts} / ${goal}`, sum.workouts >= goal ? '<small class="good-text">objectif atteint</small>' : ''],
     ['🔥 Brûlé au sport', `${nf(sum.burned)} kcal`, ''],
     ['💧 Eau', sum.waterAvg != null ? `${nf(sum.waterAvg, 1)} verres / j` : '—', delta(sum.waterAvg, prev?.waterAvg, { digits: 1 })],
     ['😴 Sommeil', sum.sleepAvg != null ? `${nf(sum.sleepAvg, 1)} h / nuit` : '—', delta(sum.sleepAvg, prev?.sleepAvg, { digits: 1, unit: ' h' })],
@@ -91,6 +92,12 @@ export function render(root, ctx) {
     return { label: formatShort(w), value: min, tip: `<strong>Semaine du ${formatDayMonth(w)}</strong><br>${nf(min)} min de sport` };
   });
 
+  const kmBars = weeks.map((w) => {
+    const steps = Array.from({ length: 7 }, (_, i) => state.days[addDays(w, i)]?.steps || 0).reduce((a, b) => a + b, 0);
+    const km = Math.round(stepsKm(steps, p) * 10) / 10;
+    return { label: formatShort(w), value: km, tip: `<strong>Semaine du ${formatDayMonth(w)}</strong><br>${nf(km, 1)} km (${nf(steps)} pas)` };
+  });
+
   const wStart = addDays(thisMonday, -7 * weekOffset);
   const sum = weekSummary(state, wStart, today, targetFor);
   const prev = weekSummary(state, addDays(wStart, -7), today, targetFor);
@@ -139,6 +146,11 @@ export function render(root, ctx) {
     </section>
 
     <section class="card">
+      <div class="card-head"><h2>👣 Km — 8 semaines</h2></div>
+      <div id="chart-km"></div>
+    </section>
+
+    <section class="card">
       <div class="card-head"><h2>💪 Sport — minutes par semaine</h2></div>
       <div id="chart-sport"></div>
     </section>
@@ -151,7 +163,7 @@ export function render(root, ctx) {
       </div>
       ${sum ? `
         <p class="small muted center">Du ${formatDayMonth(sum.start)} au ${formatDayMonth(sum.end)} · comparé à la semaine précédente</p>
-        ${summaryRows(sum, prev, p.teethTracker)}
+        ${summaryRows(sum, prev, p.teethTracker, p.weekGoal ?? 5)}
         <p class="verdict">${verdict(sum)}</p>` : '<p class="muted">Pas de données.</p>'}
     </section>
 
@@ -186,6 +198,7 @@ export function render(root, ctx) {
     bars: kcalBars, target: targetFor(today), unit: 'kcal', valueLabel: 'Sous l’objectif', overLabel: 'Au-dessus de l’objectif',
   });
   renderBarChart(root.querySelector('#chart-steps'), { bars: stepBars, target: p.stepsGoal, targetLabel: 'Objectif', unit: 'pas', height: 170 });
+  renderBarChart(root.querySelector('#chart-km'), { bars: kmBars, unit: 'km', height: 170 });
   renderBarChart(root.querySelector('#chart-sport'), { bars: sportBars, unit: 'min', height: 170 });
 
   bindActions(root, {

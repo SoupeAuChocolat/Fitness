@@ -4,6 +4,7 @@ import { currentWeight, kcalFromMet, lastPerformance } from '../calc.js';
 import { formatRelative } from '../dates.js';
 import { COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, MET_GYM_SESSION, MET_HOME_SESSION, WARMUP } from '../data/exercises.js';
 import { mediaHtml, startAnimations } from '../exmedia.js';
+import { applyReminders } from '../reminders.js';
 import { buildGymWorkout, buildHomeWorkout, findExercise, newExercise, planForDate } from '../program.js';
 import { beep, bindActions, confirmSheet, esc, ICON, nf, openSheet, parseNum, toast, unlockAudio } from '../ui.js';
 
@@ -400,6 +401,7 @@ function openFinish(ctx, w) {
           s.activeWorkout = null;
         }, { silent: true });
         close();
+        applyReminders(store.get().reminders).catch(() => {});
         ctx.go('sport');
         toast('Séance enregistrée, bien joué !', { icon: '💪' });
       });

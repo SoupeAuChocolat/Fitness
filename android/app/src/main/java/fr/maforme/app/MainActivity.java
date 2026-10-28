@@ -6,8 +6,9 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Plugin propre à l'app (les plugins npm sont enregistrés automatiquement).
+        // Plugins propres à l'app (les plugins npm sont enregistrés automatiquement).
         registerPlugin(HealthConnectPlugin.class);
+        registerPlugin(WidgetPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

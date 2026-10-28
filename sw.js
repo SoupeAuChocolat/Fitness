@@ -1,7 +1,7 @@
 // Service worker : l'app fonctionne hors ligne.
 // Stratégie « réseau d'abord » : en ligne, on récupère toujours la dernière
 // version ; hors ligne (ou réseau trop lent), on sert la copie en cache.
-const CACHE = 'ma-forme-v2';
+const CACHE = 'ma-forme-v3';
 const ASSETS = [
   './',
   'index.html',
@@ -37,6 +37,7 @@ const ASSETS = [
   'js/views/habits.js',
   'js/views/meals.js',
   'js/views/onboarding.js',
+  'js/widget.js',
   'js/views/progress.js',
   'js/views/settings.js',
   'js/views/sport.js',

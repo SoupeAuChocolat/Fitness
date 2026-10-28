@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ma Forme"
+        android:textColor="#0B8159"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/w_kcal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#121614"
+        android:textSize="24sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/w_kcal_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#4A504C"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/w_eaten"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="#121614"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/w_steps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#121614"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/w_sport"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#121614"
+        android:textSize="13sp" />
+</LinearLayout>

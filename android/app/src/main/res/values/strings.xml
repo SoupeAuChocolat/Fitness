@@ -1,6 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Ma Forme</string>
+    <string name="widget_description">Calories restantes, pas et séances de la semaine</string>
     <string name="title_activity_main">Ma Forme</string>
     <string name="package_name">fr.maforme.app</string>
     <string name="custom_url_scheme">fr.maforme.app</string>

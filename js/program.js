@@ -83,16 +83,16 @@ export function findExercise(name) {
     || null;
 }
 
-// Séances de la semaine (lundi → aujourd'hui) par rapport à l'objectif du programme :
-// une journée compte si au moins une activité y est notée.
+// Séances de la semaine (lundi → dimanche) par rapport à l'objectif réglé dans les réglages.
+// Un jour de repos choisi (day.rest) n'est plus attendu : l'objectif se réduit d'autant,
+// sans pouvoir descendre sous le nombre de jours d'entraînement restants.
+export const isTrainingType = (type) => type === 'strength' || type === 'cardio';
+
 export function weekTraining(state, today) {
   const monday = weekStart(today);
-  const goal = Object.values(WEEK_PLAN).filter((p) => p.type === 'strength' || p.type === 'cardio').length;
-  let done = 0;
-  for (let i = 0; i < 7; i++) {
-    const k = addDays(monday, i);
-    if (k > today) break;
-    if ((state.days[k]?.workouts || []).length) done++;
-  }
-  return { done, goal };
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const expectable = days.filter((k) => isTrainingType(WEEK_PLAN[weekday(k)].type) && !state.days[k]?.rest).length;
+  const goal = Math.min(state.profile?.weekGoal ?? 5, expectable);
+  const done = days.filter((k) => k <= today && (state.days[k]?.workouts || []).length).length;
+  return { done, goal, remaining: Math.max(0, goal - done) };
 }

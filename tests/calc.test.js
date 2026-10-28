@@ -297,7 +297,14 @@ test('km estimés et séances de la semaine', async () => {
   state.days['2026-10-27'] = { workouts: [{ title: 'x' }] };
   state.days['2026-10-28'] = { workouts: [{ title: 'x' }] };
   state.days['2026-10-29'] = { workouts: [] };
-  assert.deepEqual(weekTraining(state, '2026-10-29'), { done: 3, goal: 5 });
+  assert.deepEqual(weekTraining(state, '2026-10-29'), { done: 3, goal: 5, remaining: 2 });
   state.days['2026-10-31'] = { workouts: [{ title: 'x' }] };
-  assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 5 });
+  assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 5, remaining: 1 });
+  // objectif réglé à 3 : déjà atteint
+  state.profile = { weekGoal: 3 };
+  assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 3, remaining: 0 });
+  // un vendredi marqué « repos » sort de l'objectif
+  state.profile = { weekGoal: 5 };
+  state.days['2026-10-30'] = { rest: true };
+  assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 4, remaining: 0 });
 });
