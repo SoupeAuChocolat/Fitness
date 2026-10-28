@@ -2,7 +2,7 @@
 import { addDays, diffDays, weekday, weekStart } from './dates.js';
 import { lastPerformance } from './calc.js';
 import {
-  CARDIO_MINUTES, GYM_EXERCISES, GYM_REST, GYM_SESSIONS, HOME_EXERCISES, HOME_REST, HOME_SESSIONS, WEEK_PLAN,
+  CARDIO_MINUTES, GYM_EXERCISES, GYM_REST, GYM_SESSIONS, HOME_EXERCISES, HOME_REST, HOME_SESSIONS, STRETCHES, WEEK_PLAN,
 } from './data/exercises.js';
 
 export const LEVEL_NAMES = ['Découverte', 'Progression', 'Confirmation', 'Endurance'];
@@ -63,12 +63,25 @@ export function buildHomeWorkout(session, level) {
   return { kind: 'home', title: `Maison — séance ${session}`, rest: HOME_REST[level - 1], exercises };
 }
 
+// Charge suggérée : +2,5 kg si toutes les séries de la fois précédente ont atteint la cible.
+export const PROGRESSION_STEP = 2.5;
+export function nextLoad(last, item) {
+  const lastKg = last?.sets?.find((s) => s.kg != null)?.kg ?? null;
+  if (lastKg == null) return { kg: null, progressed: false };
+  const sets = last.sets.filter((s) => s.reps != null).slice(0, item.sets);
+  const hitAll = sets.length === item.sets && sets.every((s) => s.reps >= item.target);
+  return hitAll ? { kg: lastKg + PROGRESSION_STEP, progressed: true } : { kg: lastKg, progressed: false };
+}
+
 export function buildGymWorkout(session, state, today) {
   const exercises = GYM_SESSIONS[session].map((item) => {
     const ex = GYM_EXERCISES[item.ex];
     const last = lastPerformance(state, ex.name, today);
-    const kg = last ? last.sets.find((s) => s.kg != null)?.kg ?? null : null;
-    return { name: ex.name, mode: ex.mode, perSide: !!ex.perSide, sets: makeSets(item.sets, item.target, ex.mode === 'reps' ? kg : null) };
+    const load = ex.mode === 'reps' ? nextLoad(last, item) : { kg: null, progressed: false };
+    return {
+      name: ex.name, mode: ex.mode, perSide: !!ex.perSide, progressed: load.progressed,
+      sets: makeSets(item.sets, item.target, load.kg),
+    };
   });
   return { kind: 'gym', title: `Salle — séance ${session}`, rest: GYM_REST, exercises };
 }
@@ -80,7 +93,18 @@ export function newExercise(name, mode, perSide = false, sets = 3) {
 export function findExercise(name) {
   return Object.values(HOME_EXERCISES).find((e) => e.name === name)
     || Object.values(GYM_EXERCISES).find((e) => e.name === name)
+    || STRETCHES.find((e) => e.name === name)
     || null;
+}
+
+// Séance d'étirements : chaque étirement dure 30 secondes (par côté si besoin).
+export function buildStretchWorkout() {
+  return {
+    kind: 'stretch',
+    title: 'Étirements guidés',
+    rest: 10,
+    exercises: STRETCHES.map((e) => newExercise(e.name, 'time', e.perSide, 1)),
+  };
 }
 
 // Séances de la semaine (lundi → dimanche) par rapport à l'objectif réglé dans les réglages.

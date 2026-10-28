@@ -404,3 +404,29 @@ test('liste de courses, réserve sorties et alerte protéines', async () => {
   assert.equal(proteinAlert(60, 130, foods).picks[0].name, 'Poulet');
   assert.equal(proteinAlert(100, 130, foods), null); // au-dessus de 70 % : pas d'alerte
 });
+
+test('progression des charges : +2,5 kg quand la cible est atteinte', async () => {
+  const { nextLoad } = await import('../js/program.js');
+  const item = { sets: 3, target: 12 };
+  const hit = { sets: [{ reps: 12, kg: 60 }, { reps: 12, kg: 60 }, { reps: 13, kg: 60 }] };
+  assert.deepEqual(nextLoad(hit, item), { kg: 62.5, progressed: true });
+  const miss = { sets: [{ reps: 12, kg: 60 }, { reps: 10, kg: 60 }, { reps: 12, kg: 60 }] };
+  assert.deepEqual(nextLoad(miss, item), { kg: 60, progressed: false });
+  // une série de moins que prévu : on garde la charge
+  assert.deepEqual(nextLoad({ sets: [{ reps: 12, kg: 60 }] }, item), { kg: 60, progressed: false });
+  // pas de charge enregistrée (exercice au poids du corps)
+  assert.deepEqual(nextLoad({ sets: [{ reps: 12, kg: null }] }, item), { kg: null, progressed: false });
+  assert.deepEqual(nextLoad(null, item), { kg: null, progressed: false });
+});
+
+test('échauffement adapté et séance d’étirements', async () => {
+  const { warmupFor } = await import('../js/data/exercises.js');
+  const { buildStretchWorkout, findExercise } = await import('../js/program.js');
+  assert.notDeepEqual(warmupFor('gym'), warmupFor('home'));
+  assert.equal(warmupFor('inconnu'), warmupFor('home'));
+  const w = buildStretchWorkout();
+  assert.equal(w.kind, 'stretch');
+  assert.ok(w.exercises.length >= 5);
+  assert.ok(w.exercises.every((e) => e.mode === 'time' && e.sets[0].target === 30));
+  assert.ok(findExercise(w.exercises[0].name));
+});

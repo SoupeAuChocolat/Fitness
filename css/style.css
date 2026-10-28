@@ -826,3 +826,5 @@ details.card.ex-detail { padding: 6px 16px; }
 .hunger-btns button.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .fav-chips { margin-bottom: 8px; }
 .check-line input:checked + span { text-decoration: line-through; color: var(--muted); }
+.prog-tag { display: block; color: var(--good); font-weight: 600; font-size: 0.82rem; }
+.interval-big { font-size: 3.2rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent-strong); margin: 12px 0 4px; }

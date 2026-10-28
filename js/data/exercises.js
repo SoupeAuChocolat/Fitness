@@ -220,3 +220,39 @@ export const WEEK_PLAN = {
 };
 
 export const CARDIO_MINUTES = [25, 30, 35, 40];
+
+// Échauffement adapté au type de séance.
+export const WARMUPS = {
+  home: [
+    '2 min de jumping jacks légers ou de montées de genoux',
+    '10 squats lents',
+    '10 pompes inclinées ou sur les genoux',
+    '10 rotations des épaules dans chaque sens',
+    '30 s de gainage léger',
+  ],
+  gym: [
+    '5 min de vélo ou de tapis à allure facile',
+    '10 montées sur banc ou fentes sans charge',
+    '10 rotations d’épaules et 10 tractions ou tirages très légers',
+    'Une série d’échauffement avec la moitié de la charge prévue, 8 répétitions',
+  ],
+  cardio: [
+    '5 min de marche lente, puis accélère doucement',
+    '1 min de montées de genoux légères',
+    'Respire calmement avant de commencer',
+  ],
+  stretch: ['2 min de marche sur place pour réchauffer le corps'],
+};
+
+export const warmupFor = (kind) => WARMUPS[kind] || WARMUPS.home;
+
+// Étirements guidés : 30 secondes chacun.
+export const STRETCHES = [
+  { name: 'Étirement des ischio-jambiers', mode: 'time', perSide: true, desc: 'Assis, une jambe tendue devant toi. Penche-toi doucement vers le pied sans arrondir le dos. Respire.' },
+  { name: 'Étirement des quadriceps', mode: 'time', perSide: true, desc: 'Debout, attrape ton pied derrière toi et rapproche le talon des fesses. Genoux serrés, bassin rentré.' },
+  { name: 'Étirement des fessiers', mode: 'time', perSide: true, desc: 'Allongé sur le dos, pose une cheville sur le genou opposé et rapproche la cuisse vers la poitrine.' },
+  { name: 'Étirement des pectoraux', mode: 'time', perSide: false, desc: 'Avant-bras appuyés sur un cadre de porte à hauteur d’épaules. Avance doucement le buste.' },
+  { name: 'Étirement du dos', mode: 'time', perSide: false, desc: 'À quatre pattes : arrondis le dos en expirant, puis creuse-le doucement en inspirant.' },
+  { name: 'Étirement des mollets', mode: 'time', perSide: true, desc: 'Mains contre un mur, une jambe en arrière, talon au sol. Pousse doucement le bassin vers le mur.' },
+  { name: 'Étirement des épaules', mode: 'time', perSide: true, desc: 'Bras tendu devant toi, ramène-le contre la poitrine avec l’autre main.' },
+];

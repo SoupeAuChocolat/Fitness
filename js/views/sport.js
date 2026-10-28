@@ -2,11 +2,11 @@
 import * as store from '../store.js';
 import { currentWeight, kcalFromMet } from '../calc.js';
 import { addDays, formatRelative, todayKey, weekStart, weekdayShort } from '../dates.js';
-import { CARDIO, COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, WARMUP } from '../data/exercises.js';
+import { CARDIO, COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, warmupFor } from '../data/exercises.js';
 import { mediaHtml, startAnimations } from '../exmedia.js';
-import { homeLevel, LEVEL_NAMES, planForDate, weekTraining } from '../program.js';
-import { bindActions, confirmSheet, dateNav, esc, ICON, nf, openSheet, parseNum, progressBar, toast } from '../ui.js';
-import { startFree, startPlanned } from './workout.js';
+import { buildStretchWorkout, homeLevel, LEVEL_NAMES, planForDate, weekTraining } from '../program.js';
+import { beep, bindActions, confirmSheet, dateNav, esc, ICON, nf, openSheet, parseNum, progressBar, toast, unlockAudio } from '../ui.js';
+import { startFree, startPlanned, startWorkout } from './workout.js';
 
 export function openActivitySheet(ctx, date, minutes = 30) {
   const state = store.get();
@@ -156,8 +156,17 @@ export function render(root, ctx) {
     </section>
 
     <section class="card">
+      <div class="card-head"><h2>✨ Séances bonus</h2></div>
+      <div class="btn-row">
+        <button class="btn grow" data-act="stretch">🧘 Étirements guidés</button>
+        <button class="btn grow" data-act="interval">🚶 Marche en intervalles</button>
+      </div>
+    </section>
+
+    <section class="card">
       <div class="card-head"><h2>📖 Exercices</h2></div>
-      <details class="ex-detail"><summary>Échauffement (5 min)</summary><ul>${WARMUP.map((w) => `<li>${esc(w)}</li>`).join('')}</ul></details>
+      <details class="ex-detail"><summary>Échauffement maison (5 min)</summary><ul>${warmupFor('home').map((w) => `<li>${esc(w)}</li>`).join('')}</ul></details>
+      <details class="ex-detail"><summary>Échauffement salle (5 min)</summary><ul>${warmupFor('gym').map((w) => `<li>${esc(w)}</li>`).join('')}</ul></details>
       <details class="ex-detail"><summary>Retour au calme</summary><p>${esc(COOLDOWN)}</p></details>
       <details class="ex-group"><summary>🏠 Maison, sans matériel <small class="muted">(${Object.keys(HOME_EXERCISES).length})</small></summary>${exerciseList(HOME_EXERCISES)}</details>
       <details class="ex-group"><summary>🏋️ Salle de sport <small class="muted">(${Object.keys(GYM_EXERCISES).length})</small></summary>${exerciseList(GYM_EXERCISES)}</details>
@@ -183,6 +192,12 @@ export function render(root, ctx) {
     free() {
       startFree(ctx);
     },
+    stretch() {
+      startWorkout(ctx, buildStretchWorkout());
+    },
+    interval() {
+      openIntervalWalk(ctx, key);
+    },
     activity(el) {
       openActivitySheet(ctx, key, Number(el.dataset.min) || 30);
     },
@@ -202,5 +217,99 @@ export function render(root, ctx) {
         s.days[key].workouts = s.days[key].workouts.filter((w) => w.id !== el.dataset.id);
       });
     },
+  });
+}
+
+// --- Marche en intervalles : 6 cycles de 2 min rapide + 1 min lent --------------------
+
+const WALK_FAST = 120;
+const WALK_SLOW = 60;
+const WALK_ROUNDS = 6;
+
+function openIntervalWalk(ctx, date) {
+  const weight = currentWeight(store.get(), date);
+  let timer = null;
+  let round = 1;
+  let phase = 'fast';
+  let phaseEnd = 0;
+  let startedAt = 0;
+  let el = {};
+
+  const stop = () => {
+    clearInterval(timer);
+    timer = null;
+  };
+  const log = (minutes) => {
+    if (minutes < 1) return;
+    store.update((s) => {
+      const d = (s.days[date] ||= {});
+      (d.workouts ||= []).push({
+        id: store.uid(), kind: 'cardio', activity: 'marche_rapide', title: 'Marche en intervalles',
+        minutes: Math.round(minutes), distanceKm: null, kcal: kcalFromMet(4.3, weight, minutes), at: Date.now(),
+      });
+    });
+    toast(`Marche enregistrée : ${Math.round(minutes)} min`, { icon: '🚶' });
+  };
+  const elapsedMin = () => (Date.now() - startedAt) / 60000;
+  const finish = () => {
+    stop();
+    beep(2);
+    el.phase.textContent = 'Bravo, tous les cycles sont faits ! 🎉';
+    el.time.textContent = '0';
+    log((WALK_FAST + WALK_SLOW) * WALK_ROUNDS / 60);
+  };
+  const show = (now) => {
+    el.time.textContent = String(Math.max(0, Math.ceil((phaseEnd - now) / 1000)));
+    el.phase.textContent = phase === 'fast' ? `🏃 Rapide · cycle ${round} / ${WALK_ROUNDS}` : `🚶 Lent · cycle ${round} / ${WALK_ROUNDS}`;
+  };
+  const tick = () => {
+    const now = Date.now();
+    if (now < phaseEnd) return show(now);
+    if (phase === 'fast') {
+      phase = 'slow';
+      phaseEnd = now + WALK_SLOW * 1000;
+      beep(1);
+    } else if (round < WALK_ROUNDS) {
+      round++;
+      phase = 'fast';
+      phaseEnd = now + WALK_FAST * 1000;
+      beep(2);
+    } else {
+      return finish();
+    }
+    show(now);
+  };
+
+  openSheet({
+    title: 'Marche en intervalles',
+    html: `
+      <p class="small muted">${WALK_ROUNDS} cycles de 2 min rapide puis 1 min lent, soit 18 min. Un signal sonore annonce chaque changement.</p>
+      <div class="interval-big" data-time>—</div>
+      <p class="center" data-phase>Prêt ?</p>
+      <div class="btn-row">
+        <button class="btn btn-primary grow" data-go>Démarrer</button>
+        <button class="btn" data-stop>Arrêter</button>
+      </div>`,
+    onMount(body, close) {
+      el = { time: body.querySelector('[data-time]'), phase: body.querySelector('[data-phase]') };
+      body.querySelector('[data-go]').addEventListener('click', () => {
+        unlockAudio();
+        stop();
+        round = 1;
+        phase = 'fast';
+        startedAt = Date.now();
+        phaseEnd = startedAt + WALK_FAST * 1000;
+        beep(1);
+        show(startedAt);
+        timer = setInterval(tick, 250);
+      });
+      body.querySelector('[data-stop]').addEventListener('click', () => {
+        const minutes = timer ? elapsedMin() : 0;
+        stop();
+        if (minutes >= 5) log(minutes);
+        close();
+      });
+    },
+    onClose: stop,
   });
 }
