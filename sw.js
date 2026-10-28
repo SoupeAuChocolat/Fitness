@@ -1,12 +1,20 @@
 // Service worker : l'app fonctionne hors ligne.
 // Stratégie « réseau d'abord » : en ligne, on récupère toujours la dernière
 // version ; hors ligne (ou réseau trop lent), on sert la copie en cache.
-const CACHE = 'ma-forme-v6';
+const CACHE = 'ma-forme-v7';
 const ASSETS = [
   './',
   'index.html',
   'manifest.webmanifest',
   'css/style.css',
+  'css/themes.css',
+  'fonts/chakra-petch-400.woff2',
+  'fonts/chakra-petch-600.woff2',
+  'fonts/chakra-petch-700.woff2',
+  'fonts/orbitron.woff2',
+  'fonts/rajdhani-500.woff2',
+  'fonts/rajdhani-600.woff2',
+  'fonts/rajdhani-700.woff2',
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -29,6 +37,7 @@ const ASSETS = [
   'js/reminders.js',
   'js/stick.js',
   'js/store.js',
+  'js/theme.js',
   'js/ui.js',
   'js/data/ciqual.js',
   'js/data/exercises.js',

@@ -3,7 +3,8 @@ import * as store from './store.js';
 import { checkNewBadges } from './badges.js';
 import { addDays, todayKey } from './dates.js';
 import { syncHealth } from './health.js';
-import { App, isNative, SystemBars } from './native.js';
+import { App, isNative } from './native.js';
+import { applyTheme } from './theme.js';
 import { applyReminders, onReminderTap } from './reminders.js';
 import { consumeWidgetWater, pushWidget } from './widget.js';
 import { closeTopSheet, esc, ICON, toast } from './ui.js';
@@ -147,6 +148,7 @@ function buildTabbar() {
 }
 
 function init() {
+  applyTheme();
   store.load();
   store.setErrorHandler(() => toast('Impossible d’enregistrer : stockage du navigateur plein ou bloqué.', { icon: '⚠️', duration: 5000 }));
   store.subscribe(render);
@@ -192,7 +194,6 @@ function init() {
 
 function initAndroid(onResume) {
   document.body.classList.add('native');
-  SystemBars?.setStyle({ style: 'DEFAULT' }).catch?.(() => {});
   // Bouton retour : ferme la feuille ouverte, sinon revient en arrière, sinon quitte l'app.
   App?.addListener('backButton', () => {
     if (closeTopSheet()) return;

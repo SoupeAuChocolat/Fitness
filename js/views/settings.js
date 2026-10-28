@@ -7,6 +7,7 @@ import { Filesystem, HealthConnect, isNative, Share } from '../native.js';
 import {
   applyReminders, enableReminders, exactAlarmsAllowed, notificationPermission, openExactAlarmSettings, remindersAvailable,
 } from '../reminders.js';
+import { getTheme, setTheme, THEMES } from '../theme.js';
 import { bindActions, confirmSheet, esc, nf, parseNum, toast } from '../ui.js';
 
 const options = (list, current) =>
@@ -109,6 +110,11 @@ export function render(root, ctx) {
       <button class="btn btn-primary btn-block" data-act="save">Enregistrer</button>
     </section>
 
+    <section class="card">
+      <div class="card-head"><h2>🎨 Thème</h2></div>
+      <div class="theme-picker">${THEMES.map((th) => `<button class="theme-opt ${getTheme() === th.id ? 'on' : ''}" data-act="theme" data-id="${th.id}"><span class="theme-swatch sw-${th.id}"></span>${esc(th.label)}</button>`).join('')}</div>
+    </section>
+
     ${healthSection(state)}
     ${remindersSection(state.reminders)}
 
@@ -169,6 +175,10 @@ export function render(root, ctx) {
   }
 
   bindActions(root, {
+    theme(btn) {
+      setTheme(btn.dataset.id);
+      ctx.rerender();
+    },
     save() {
       const num = (f) => parseNum(val(f));
       const age = num('age');
