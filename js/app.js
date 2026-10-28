@@ -5,7 +5,7 @@ import { addDays, todayKey } from './dates.js';
 import { syncHealth } from './health.js';
 import { App, isNative, SystemBars } from './native.js';
 import { applyReminders, onReminderTap } from './reminders.js';
-import { pushWidget } from './widget.js';
+import { consumeWidgetWater, pushWidget } from './widget.js';
 import { closeTopSheet, esc, ICON, toast } from './ui.js';
 import * as habit from './views/habit.js';
 import * as habits from './views/habits.js';
@@ -164,6 +164,7 @@ function init() {
       render();
     }
     syncHealth().catch(() => {});
+    if (isNative) consumeWidgetWater().catch(() => {});
     if (isNative) applyReminders(store.get().reminders).catch(() => {});
   };
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && onResume());
@@ -205,6 +206,7 @@ function initAndroid(onResume) {
   syncHealth({ force: true }).catch(() => {});
   // Reprogramme les rappels (après une mise à jour de l'app ou un redémarrage).
   if (state.reminders.enabled) applyReminders(state.reminders).catch(() => {});
+  consumeWidgetWater().catch(() => {});
 }
 
 init();

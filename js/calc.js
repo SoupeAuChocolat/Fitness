@@ -429,3 +429,22 @@ export function sleepVsFails(state, today) {
     ok: { n: buckets.ok.n, rate: buckets.ok.fails / buckets.ok.n },
   };
 }
+
+// Dernier jour où quelque chose a été noté (poids, repas, pas, sommeil, eau, séance).
+export function lastActivityKey(state) {
+  let last = null;
+  for (const k of Object.keys(state.days)) {
+    const d = state.days[k];
+    const active = d.weight != null || d.waist != null || d.steps || d.sleep != null || d.water
+      || (d.meals || []).length || (d.workouts || []).length;
+    if (active && (!last || k > last)) last = k;
+  }
+  return last;
+}
+
+// Reprise après une pause : au moins 4 jours sans rien noter, et pas encore masqué aujourd'hui.
+export function needsResume(state, today) {
+  const last = lastActivityKey(state);
+  if (!last || state.resumeDismissed === today) return false;
+  return diffDays(last, today) >= 4;
+}

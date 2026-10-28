@@ -6,6 +6,21 @@ import { weekTraining } from './program.js';
 import * as store from './store.js';
 import { nf } from './ui.js';
 
+// Verres ajoutés depuis le widget : repris dans le journal du jour.
+export async function consumeWidgetWater() {
+  if (!MaFormeWidget) return 0;
+  const { count } = await MaFormeWidget.consumeWater().catch(() => ({ count: 0 }));
+  if (!count) return 0;
+  const key = todayKey();
+  store.update((s) => {
+    const d = (s.days[key] ||= {});
+    const before = d.water || 0;
+    d.water = before + count;
+    store.logChange(key, 'water', before, d.water);
+  });
+  return count;
+}
+
 export function pushWidget(state = store.get()) {
   if (!MaFormeWidget || !state.profile) return;
   const key = todayKey();
@@ -21,5 +36,7 @@ export function pushWidget(state = store.get()) {
     eaten: `Mangé ${nf(t.eaten)} / ${nf(goal.target)} kcal`,
     steps: `${nf(steps)} pas · ${nf(stepsKm(steps, state.profile), 1)} km`,
     sport: `Séances ${week.done} / ${week.goal} cette semaine`,
+    waterCount: String(day.water || 0),
+    waterGoal: String(state.profile.waterGoal),
   }).catch(() => {});
 }

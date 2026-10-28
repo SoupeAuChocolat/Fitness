@@ -1,6 +1,6 @@
 // Tableau de bord du jour.
 import * as store from '../store.js';
-import { currentWeight, dailyTarget, dayTotals, habitStats, latestValue, STEP_BASELINE, stepsKm, teethStats } from '../calc.js';
+import { currentWeight, dailyTarget, dayTotals, habitStats, latestValue, needsResume, STEP_BASELINE, stepsKm, teethStats } from '../calc.js';
 import { addDays, diffDays, todayKey } from '../dates.js';
 import { QUOTES } from '../data/quotes.js';
 import { openFailSheet, openSosPicker, toggleOk } from '../habit-actions.js';
@@ -85,6 +85,11 @@ export function render(root, ctx) {
     ${dateNav(key)}
     ${isToday ? `<div class="hello"><h1>${greeting(p.name)}</h1><p class="quote">« ${esc(quote)} »</p></div>` : ''}
     ${isToday ? setupCard(state) : ''}
+    ${isToday && needsResume(state, key) ? `<section class="card resume-card">
+      <div class="card-head"><h2>👋 Content de te revoir</h2></div>
+      <p class="small">Pas besoin de rattraper les jours manquants : les jours non notés ne comptent pas contre toi. On repart de maintenant.</p>
+      <div class="btn-row"><button class="btn btn-primary grow" data-act="resumeWeight">⚖️ Noter mon poids</button><button class="btn grow" data-act="resumeOk">Ok, c’est parti</button></div>
+    </section>` : ''}
 
     <a class="card card-link cal-card" href="#/meals">
       <div class="ring-wrap">
@@ -287,6 +292,14 @@ export function render(root, ctx) {
     restDay(el) {
       setField('rest', el.dataset.v ? true : null);
       applyReminders(store.get().reminders).catch(() => {});
+    },
+    resumeWeight() {
+      const input = root.querySelector('[data-change="weight"]');
+      input?.scrollIntoView({ block: 'center' });
+      input?.focus();
+    },
+    resumeOk() {
+      store.update((s) => (s.resumeDismissed = key));
     },
     dismissSetup() {
       store.update((s) => (s.setupDismissed = true));

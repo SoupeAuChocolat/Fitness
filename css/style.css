@@ -832,3 +832,4 @@ details.card.ex-detail { padding: 6px 16px; }
 .challenge-card.done { background: var(--good-soft); }
 .review { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
 .review p { margin: 4px 0; }
+.resume-card { border-left: 4px solid var(--accent); }

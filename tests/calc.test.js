@@ -474,3 +474,16 @@ test('bilan : prochain dimanche à 19 h', async () => {
   const sunLate = new Date(2026, 9, 25, 20, 0);
   assert.equal(nextSundayEvening(sunLate).at.getDate(), 1);
 });
+
+test('reprise après une pause', async () => {
+  const { lastActivityKey, needsResume } = await import('../js/calc.js');
+  const state = emptyState();
+  state.days['2026-10-20'] = { weight: 90 };
+  state.days['2026-10-21'] = { teeth: [false, false, false] }; // rien d'important
+  assert.equal(lastActivityKey(state), '2026-10-20');
+  assert.equal(needsResume(state, '2026-10-23'), false);
+  assert.equal(needsResume(state, '2026-10-24'), true);
+  state.resumeDismissed = '2026-10-24';
+  assert.equal(needsResume(state, '2026-10-24'), false);
+  assert.equal(needsResume(emptyState(), '2026-10-24'), false);
+});

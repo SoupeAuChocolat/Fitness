@@ -5,16 +5,31 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.widget.RemoteViews
 
-/** Widget d'écran d'accueil : chiffres du jour, mis à jour par l'app à chaque changement. */
+/**
+ * Widget d'écran d'accueil : chiffres du jour et bouton « + verre d'eau ».
+ * Les verres ajoutés sont mémorisés ici et repris par l'app à son prochain passage.
+ */
 class WidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (id in appWidgetIds) appWidgetManager.updateAppWidget(id, views(context))
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_ADD_WATER) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            prefs.edit().putInt(PENDING_WATER, prefs.getInt(PENDING_WATER, 0) + 1).apply()
+            refresh(context)
+        }
+    }
+
     companion object {
         const val PREFS = "maforme_widget"
+        const val PENDING_WATER = "pendingWater"
+        const val ACTION_ADD_WATER = "fr.maforme.app.ADD_WATER"
 
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
@@ -24,18 +39,29 @@ class WidgetProvider : AppWidgetProvider() {
 
         private fun views(context: Context): RemoteViews {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val pending = prefs.getInt(PENDING_WATER, 0)
+            val water = (prefs.getString("waterCount", "0")?.toIntOrNull() ?: 0) + pending
+            val goal = prefs.getString("waterGoal", "8") ?: "8"
+
             val views = RemoteViews(context.packageName, R.layout.widget_maforme)
             views.setTextViewText(R.id.w_kcal, prefs.getString("kcalLeft", "—"))
             views.setTextViewText(R.id.w_kcal_label, prefs.getString("kcalLabel", "kcal restantes"))
             views.setTextViewText(R.id.w_eaten, prefs.getString("eaten", ""))
             views.setTextViewText(R.id.w_steps, prefs.getString("steps", ""))
             views.setTextViewText(R.id.w_sport, prefs.getString("sport", ""))
+            views.setTextViewText(R.id.w_water, "💧 $water / $goal verres")
+
             context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { intent ->
-                val pending = PendingIntent.getActivity(
+                val open = PendingIntent.getActivity(
                     context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
-                views.setOnClickPendingIntent(R.id.w_root, pending)
+                views.setOnClickPendingIntent(R.id.w_root, open)
             }
+            val addWater = Intent(context, WidgetProvider::class.java).setAction(ACTION_ADD_WATER)
+            val addPending = PendingIntent.getBroadcast(
+                context, 1, addWater, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.w_water_btn, addPending)
             return views
         }
     }
