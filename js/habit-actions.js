@@ -3,6 +3,7 @@ import * as store from './store.js';
 import { habitStats } from './calc.js';
 import { todayKey } from './dates.js';
 import { GENERIC_TIPS, HABIT_PRESETS, TRIGGERS } from './data/habits.js';
+import { GENERIC_SUPPORT, SUPPORT } from './data/support.js';
 import { esc, openSheet, plural, toast } from './ui.js';
 
 const findHabit = (s, id) => s.habits.find((h) => h.id === id);
@@ -43,6 +44,20 @@ function bindTriggerChips(body) {
   return () => selected;
 }
 
+// Message de soutien après une rechute, adapté au déclencheur noté.
+export function openSupport(habit, trigger) {
+  const sup = (trigger && SUPPORT[trigger]) || GENERIC_SUPPORT;
+  const stats = habitStats(findHabit(store.get(), habit.id), todayKey());
+  const repeat = trigger ? stats.triggers.find(([t]) => t === trigger) : null;
+  const recurring = repeat && repeat[1] >= 3
+    ? `<p class="small">« ${esc(trigger)} » revient souvent (${repeat[1]} fois) : c’est un déclencheur à anticiper.</p>`
+    : '';
+  openSheet({
+    title: 'Ce n’est pas grave',
+    html: `<p>${esc(sup.msg)}</p><p><strong>Conseil :</strong> ${esc(sup.tip)}</p>${recurring}`,
+  });
+}
+
 export function openFailSheet(habit, date) {
   if (habit.log?.[date] === 'fail') {
     setStatus(habit.id, date, null);
@@ -64,6 +79,7 @@ export function openFailSheet(habit, date) {
       const getTrigger = bindTriggerChips(body);
       body.querySelector('[data-save]').addEventListener('click', () => {
         const note = body.querySelector('[data-note]').value.trim();
+        const trig = getTrigger();
         store.update((s) => {
           const h = findHabit(s, habit.id);
           h.log ||= {};
@@ -72,7 +88,7 @@ export function openFailSheet(habit, date) {
           h.relapses.push({ date, at: date === todayKey() ? Date.now() : null, trigger: getTrigger(), note });
         });
         close();
-        toast('Noté. Chaque jour est un nouveau départ.', { icon: '🌅' });
+        openSupport(habit, trig);
       });
     },
   });

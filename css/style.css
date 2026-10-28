@@ -828,3 +828,7 @@ details.card.ex-detail { padding: 6px 16px; }
 .check-line input:checked + span { text-decoration: line-through; color: var(--muted); }
 .prog-tag { display: block; color: var(--good); font-weight: 600; font-size: 0.82rem; }
 .interval-big { font-size: 3.2rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent-strong); margin: 12px 0 4px; }
+.challenge-card { border-left: 4px solid var(--accent); }
+.challenge-card.done { background: var(--good-soft); }
+.review { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; margin-top: 10px; }
+.review p { margin: 4px 0; }

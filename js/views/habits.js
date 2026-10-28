@@ -2,6 +2,7 @@
 import * as store from '../store.js';
 import { habitStats } from '../calc.js';
 import { formatDayMonth, todayKey } from '../dates.js';
+import { challengeProgress } from '../challenges.js';
 import { HABIT_ICONS, HABIT_PRESETS } from '../data/habits.js';
 import { openFailSheet, openSosSheet, toggleOk } from '../habit-actions.js';
 import { bindActions, esc, fmtEuro, ICON, nf, openSheet, parseNum, plural, progressBar, toast } from '../ui.js';
@@ -124,6 +125,15 @@ export function render(root, ctx) {
   const archived = state.habits.filter((h) => h.archived);
 
   root.innerHTML = `
+    ${(() => {
+      const c = challengeProgress(state, today);
+      return `<section class="card challenge-card ${c.completed ? 'done' : ''}">
+        <div class="card-head"><h2>🎯 Défi de la semaine</h2><strong class="week-count">${c.done} / ${c.target}</strong></div>
+        <p class="small">${esc(c.title)}</p>
+        ${progressBar(c.done / c.target, 'bar-accent')}
+        ${c.completed ? '<p class="small good-text">Défi réussi, bravo ! 🎉</p>' : ''}
+      </section>`;
+    })()}
     <p class="intro small muted">Chaque soir, note si tu as tenu ✓. Un jour non noté compte comme tenu ; seul « Craqué » remet le compteur à zéro. En cas d’envie, appuie sur 🆘.</p>
     ${active.length ? active.map((h) => habitCard(h, today)).join('') : '<div class="empty"><div class="hero-emoji">🛡️</div><p>Aucune habitude suivie pour l’instant.</p></div>'}
     <button class="btn btn-block" data-act="add">+ Ajouter une habitude</button>

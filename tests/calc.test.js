@@ -430,3 +430,47 @@ test('échauffement adapté et séance d’étirements', async () => {
   assert.ok(w.exercises.every((e) => e.mode === 'time' && e.sets[0].target === 30));
   assert.ok(findExercise(w.exercises[0].name));
 });
+
+test('défi hebdomadaire et bilan du dimanche', async () => {
+  const { challengeFor, challengeProgress, weeklyReview, CHALLENGES } = await import('../js/challenges.js');
+  const { SUPPORT, GENERIC_SUPPORT } = await import('../js/data/support.js');
+  const state = emptyState();
+  state.profile = { ...profile, waterGoal: 8, sleepGoal: 7.5, stepsGoal: 7000, weekGoal: 5 };
+  state.habits = [{ id: 'h', preset: 'sugar', name: 'Sucre', startDate: '2026-10-01', log: { '2026-10-26': 'fail' } }];
+  // un défi par semaine, toujours valable
+  const c = challengeFor(state, '2026-10-28');
+  assert.ok(CHALLENGES.includes(c));
+  assert.equal(challengeFor(state, '2026-10-28').id, c.id);
+  // sans habitude sucre, le défi « sans sucre » n'est pas proposé
+  const noSugar = { ...state, habits: [] };
+  for (const d of ['2026-10-26', '2026-11-02', '2026-11-09', '2026-11-16', '2026-11-23', '2026-11-30']) {
+    assert.notEqual(challengeFor(noSugar, d).id, 'sans-sucre');
+  }
+  // progression : 4 jours avec des pas à 8 000
+  const pas = { ...emptyState(), profile: state.profile, habits: [], days: {} };
+  for (const k of ['2026-10-26', '2026-10-27', '2026-10-28']) pas.days[k] = { steps: 9000 };
+  const pr = CHALLENGES.find((x) => x.id === 'pas');
+  assert.equal(pr.count(pas, ['2026-10-26', '2026-10-27', '2026-10-28']), 3);
+  // bilan : une séance manquante et une rechute
+  state.days['2026-10-27'] = { workouts: [{ title: 'x' }], sleep: 6 };
+  const review = weeklyReview(state, '2026-10-28');
+  assert.match(review.improve, /sommeil|séance|rechute/);
+  assert.ok(review.win.length > 10 && review.objective.length > 5);
+  // messages de soutien : un par déclencheur, avec repli
+  assert.ok(SUPPORT['Stress'].msg && SUPPORT['Stress'].tip);
+  assert.ok(GENERIC_SUPPORT.msg);
+  assert.ok(challengeProgress(state, '2026-10-28').target > 0);
+});
+
+test('bilan : prochain dimanche à 19 h', async () => {
+  const { nextSundayEvening } = await import('../js/challenges.js');
+  const wed = new Date(2026, 9, 28, 10, 0); // mercredi 28 octobre 2026
+  const sun = nextSundayEvening(wed).at;
+  assert.equal(sun.getDay(), 0);
+  assert.equal(sun.getDate(), 1);
+  assert.equal(sun.getHours(), 19);
+  const sunMorning = new Date(2026, 9, 25, 8, 0); // dimanche 25 octobre, 8 h
+  assert.equal(nextSundayEvening(sunMorning).at.getDate(), 25);
+  const sunLate = new Date(2026, 9, 25, 20, 0);
+  assert.equal(nextSundayEvening(sunLate).at.getDate(), 1);
+});

@@ -2,6 +2,7 @@
 import * as store from './store.js';
 import { isTrainingType, planForDate, weekTraining } from './program.js';
 import { WEEK_PLAN } from './data/exercises.js';
+import { nextSundayEvening, weeklyReview } from './challenges.js';
 import { todayKey } from './dates.js';
 import { LocalNotifications } from './native.js';
 
@@ -72,6 +73,8 @@ export async function applyReminders(r) {
   const list = buildNotifications(r);
   const weekly = weeklyReminder();
   if (weekly) list.push(weekly);
+  const review = sundayReminder();
+  if (review) list.push(review);
   if (list.length) await LocalNotifications.schedule({ notifications: list });
   return list.length;
 }
@@ -94,6 +97,21 @@ function weeklyReminder(today = todayKey()) {
     body: `Séance du jour pas encore notée. Il te reste ${left} séance${left > 1 ? 's' : ''} cette semaine.`,
     schedule: { at },
     extra: { route: 'sport' },
+  };
+}
+
+// Bilan du dimanche à 19 h : victoire, point à améliorer, objectif (texte calculé à l'ouverture de l'app).
+function sundayReminder() {
+  const s = store.get();
+  if (!s.profile) return null;
+  const { at } = nextSundayEvening();
+  const r = weeklyReview(s, todayKey());
+  return {
+    id: 501,
+    title: '📊 Bilan de la semaine',
+    body: `🏆 ${r.win} 🔧 ${r.improve} 🎯 ${r.objective}`,
+    schedule: { at },
+    extra: { route: 'progress' },
   };
 }
 

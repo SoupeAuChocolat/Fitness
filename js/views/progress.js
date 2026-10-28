@@ -4,6 +4,7 @@ import {
   bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, goalForecast, movingAverage, plateauInfo, series, sleepVsFails, stepsKm, weekSummary, weightTrend,
 } from '../calc.js';
 import { renderBarChart, renderIndexChart, renderLineChart } from '../charts.js';
+import { weeklyReview } from '../challenges.js';
 import { addDays, diffDays, formatDayMonth, formatFull, formatShort, todayKey, weekdayShort, weekStart } from '../dates.js';
 import { bindActions, esc, fmtKg, ICON, nf } from '../ui.js';
 
@@ -192,7 +193,14 @@ export function render(root, ctx) {
       ${sum ? `
         <p class="small muted center">Du ${formatDayMonth(sum.start)} au ${formatDayMonth(sum.end)} · comparé à la semaine précédente</p>
         ${summaryRows(sum, prev, p.teethTracker, p.weekGoal ?? 5)}
-        <p class="verdict">${verdict(sum)}</p>` : '<p class="muted">Pas de données.</p>'}
+        <p class="verdict">${verdict(sum)}</p>${weekOffset === 0 ? (() => {
+          const r = weeklyReview(state, today);
+          return `<div class="review">
+            <p class="small"><strong>🏆 Victoire :</strong> ${esc(r.win)}</p>
+            <p class="small"><strong>🔧 À améliorer :</strong> ${esc(r.improve)}</p>
+            <p class="small"><strong>🎯 Objectif :</strong> ${esc(r.objective)}</p>
+          </div>`;
+        })() : ''}` : '<p class="muted">Pas de données.</p>'}
     </section>
 
     <section class="card">
