@@ -61,6 +61,9 @@ export function calorieTarget(profile, weight, today) {
 // Longueur de pas estimée à partir de la taille (≈ 41,5 % chez l'homme, 41,3 % chez la femme).
 export const strideMeters = (profile) => (profile.heightCm / 100) * (profile.sex === 'f' ? 0.413 : 0.415);
 
+// Distance estimée en kilomètres.
+export const stepsKm = (steps, profile) => (steps * strideMeters(profile)) / 1000;
+
 // Coût net de la marche, équation métabolique de l'ACSM : 0,1 ml d'O2 par kg et par mètre,
 // soit ≈ 0,5 kcal par kg et par km (1 litre d'O2 ≈ 5 kcal). Le métabolisme de repos,
 // déjà compté dans la dépense de base, n'est pas inclus.

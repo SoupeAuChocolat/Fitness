@@ -4,8 +4,8 @@ import { currentWeight, kcalFromMet } from '../calc.js';
 import { addDays, formatRelative, todayKey, weekStart, weekdayShort } from '../dates.js';
 import { CARDIO, COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, WARMUP } from '../data/exercises.js';
 import { mediaHtml, startAnimations } from '../exmedia.js';
-import { homeLevel, LEVEL_NAMES, planForDate } from '../program.js';
-import { bindActions, confirmSheet, dateNav, esc, ICON, nf, openSheet, parseNum, toast } from '../ui.js';
+import { homeLevel, LEVEL_NAMES, planForDate, weekTraining } from '../program.js';
+import { bindActions, confirmSheet, dateNav, esc, ICON, nf, openSheet, parseNum, progressBar, toast } from '../ui.js';
 import { startFree, startPlanned } from './workout.js';
 
 export function openActivitySheet(ctx, date, minutes = 30) {
@@ -97,6 +97,8 @@ export function render(root, ctx) {
   const level = homeLevel(program, key);
   const monday = weekStart(key);
   const week = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const training = weekTraining(state, key);
+
   const history = Object.keys(state.days)
     .sort()
     .reverse()
@@ -129,7 +131,8 @@ export function render(root, ctx) {
     </section>
 
     <section class="card">
-      <div class="card-head"><h2>🗓️ Ma semaine</h2></div>
+      <div class="card-head"><h2>🗓️ Ma semaine</h2><strong class="week-count">${training.done} / ${training.goal} séances</strong></div>
+      ${progressBar(training.done / training.goal, 'bar-accent')}
       <div class="week">
         ${week.map((k) => {
           const pl = planForDate(k, program);

@@ -284,3 +284,20 @@ test('tous les modules JS sont mis en cache hors ligne', async () => {
     }
   }
 });
+
+test('km estimés et séances de la semaine', async () => {
+  const { stepsKm } = await import('../js/calc.js');
+  const { weekTraining } = await import('../js/program.js');
+  // 10 000 pas × 0,7387 m ≈ 7,4 km pour 178 cm
+  assert.ok(Math.abs(stepsKm(10000, { heightCm: 178, sex: 'm' }) - 7.39) < 0.01);
+
+  const state = emptyState();
+  // semaine du lundi 26 oct 2026 : séances lun, mar, mer, sam (planifiées ou non)
+  state.days['2026-10-26'] = { workouts: [{ title: 'x' }] };
+  state.days['2026-10-27'] = { workouts: [{ title: 'x' }] };
+  state.days['2026-10-28'] = { workouts: [{ title: 'x' }] };
+  state.days['2026-10-29'] = { workouts: [] };
+  assert.deepEqual(weekTraining(state, '2026-10-29'), { done: 3, goal: 5 });
+  state.days['2026-10-31'] = { workouts: [{ title: 'x' }] };
+  assert.deepEqual(weekTraining(state, '2026-11-01'), { done: 4, goal: 5 });
+});

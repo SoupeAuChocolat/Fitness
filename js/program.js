@@ -1,5 +1,5 @@
 // Programme sportif : séance du jour, niveau et construction des séances.
-import { diffDays, weekday, weekStart } from './dates.js';
+import { addDays, diffDays, weekday, weekStart } from './dates.js';
 import { lastPerformance } from './calc.js';
 import {
   CARDIO_MINUTES, GYM_EXERCISES, GYM_REST, GYM_SESSIONS, HOME_EXERCISES, HOME_REST, HOME_SESSIONS, WEEK_PLAN,
@@ -81,4 +81,18 @@ export function findExercise(name) {
   return Object.values(HOME_EXERCISES).find((e) => e.name === name)
     || Object.values(GYM_EXERCISES).find((e) => e.name === name)
     || null;
+}
+
+// Séances de la semaine (lundi → aujourd'hui) par rapport à l'objectif du programme :
+// une journée compte si au moins une activité y est notée.
+export function weekTraining(state, today) {
+  const monday = weekStart(today);
+  const goal = Object.values(WEEK_PLAN).filter((p) => p.type === 'strength' || p.type === 'cardio').length;
+  let done = 0;
+  for (let i = 0; i < 7; i++) {
+    const k = addDays(monday, i);
+    if (k > today) break;
+    if ((state.days[k]?.workouts || []).length) done++;
+  }
+  return { done, goal };
 }

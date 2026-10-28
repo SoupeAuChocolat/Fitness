@@ -1,6 +1,6 @@
 // Tableau de bord du jour.
 import * as store from '../store.js';
-import { currentWeight, dailyTarget, dayTotals, habitStats, latestValue, STEP_BASELINE, teethStats } from '../calc.js';
+import { currentWeight, dailyTarget, dayTotals, habitStats, latestValue, STEP_BASELINE, stepsKm, teethStats } from '../calc.js';
 import { addDays, diffDays, todayKey } from '../dates.js';
 import { QUOTES } from '../data/quotes.js';
 import { openFailSheet, openSosPicker, toggleOk } from '../habit-actions.js';
@@ -128,7 +128,7 @@ export function render(root, ctx) {
           : healthAvailable() ? '<button class="btn btn-sm btn-ghost" data-act="connectHealth">🔗 Connexion Santé</button>' : ''}</div>
       <div class="steps-row">
         <input class="input input-big" inputmode="numeric" enterkeyhint="done" data-change="steps" value="${day.steps ?? ''}" placeholder="0" aria-label="Nombre de pas">
-        <div class="steps-kcal"><strong>≈ ${nf(goal.walkKcal)} kcal</strong><small>brûlées en marchant</small></div>
+        <div class="steps-kcal"><strong>≈ ${nf(goal.walkKcal)} kcal</strong><small>brûlées en marchant</small><small>≈ ${nf(stepsKm(day.steps || 0, p), 1)} km parcourus</small></div>
       </div>
       ${progressBar((day.steps || 0) / p.stepsGoal)}
       <div class="goal-line small"><span class="muted">Objectif ${nf(p.stepsGoal)}</span>${synced('steps')}</div>
