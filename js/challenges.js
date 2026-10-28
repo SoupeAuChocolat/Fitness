@@ -88,12 +88,13 @@ export function weeklyReview(state, today) {
   return { win, improve, objective };
 }
 
-// Prochain dimanche à 19 h (aujourd'hui s'il n'est pas encore passé).
-export function nextSundayEvening(now = new Date()) {
+// Prochain dimanche à l'heure choisie (19 h par défaut) (aujourd'hui s'il n'est pas encore passé).
+export function nextSundayEvening(now = new Date(), time = '19:00') {
   const offset = (7 - now.getDay()) % 7;
   const at = new Date(now);
   at.setDate(now.getDate() + offset);
-  at.setHours(19, 0, 0, 0);
+  const [h, m] = time.split(':').map(Number);
+  at.setHours(h, m, 0, 0);
   if (offset === 0 && at <= now) at.setDate(at.getDate() + 7);
   return { at };
 }

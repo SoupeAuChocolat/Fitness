@@ -13,6 +13,8 @@ export const DEFAULT_REMINDERS = {
   checkin: { on: true, time: '21:00' },
   water: { on: true, from: '09:00', to: '19:00', every: 2 },
   sport: { on: true, time: '18:00' },
+  weekly: { on: true, time: '19:30' },
+  review: { on: true, time: '19:00' },
   teeth: { on: true, times: ['08:00', '13:30', '22:00'] },
 };
 

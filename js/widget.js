@@ -4,6 +4,7 @@ import { todayKey } from './dates.js';
 import { MaFormeWidget } from './native.js';
 import { weekTraining } from './program.js';
 import * as store from './store.js';
+import { getTheme } from './theme.js';
 import { nf } from './ui.js';
 
 // Verres ajoutés depuis le widget : repris dans le journal du jour.
@@ -38,5 +39,6 @@ export function pushWidget(state = store.get()) {
     sport: `Séances ${week.done} / ${week.goal} cette semaine`,
     waterCount: String(day.water || 0),
     waterGoal: String(state.profile.waterGoal),
+    theme: getTheme(),
   }).catch(() => {});
 }

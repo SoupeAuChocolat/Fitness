@@ -79,16 +79,17 @@ export async function applyReminders(r) {
   return list.length;
 }
 
-// Rappel de 19 h 30 le jour d'entraînement non noté, si la semaine n'est pas encore atteinte.
+// Rappel (19 h 30 par défaut, réglable) le jour d'entraînement non noté, si la semaine n'est pas encore atteinte.
 function weeklyReminder(today = todayKey()) {
   const s = store.get();
-  if (!s.profile || !s.program) return null;
+  if (!s.profile || !s.program || s.reminders.weekly?.on === false) return null;
   const plan = planForDate(today, s.program);
   const day = s.days[today] || {};
   const week = weekTraining(s, today);
   if (!isTrainingType(plan.type) || day.rest || (day.workouts || []).length || week.remaining === 0) return null;
   const at = new Date();
-  at.setHours(19, 30, 0, 0);
+  const [h, m] = (s.reminders.weekly?.time || '19:30').split(':').map(Number);
+  at.setHours(h, m, 0, 0);
   if (at <= new Date()) return null;
   const left = week.remaining;
   return {
@@ -100,11 +101,11 @@ function weeklyReminder(today = todayKey()) {
   };
 }
 
-// Bilan du dimanche à 19 h : victoire, point à améliorer, objectif (texte calculé à l'ouverture de l'app).
+// Bilan du dimanche (19 h par défaut, réglable) : victoire, point à améliorer, objectif (texte calculé à l'ouverture de l'app).
 function sundayReminder() {
   const s = store.get();
-  if (!s.profile) return null;
-  const { at } = nextSundayEvening();
+  if (!s.profile || s.reminders.review?.on === false) return null;
+  const { at } = nextSundayEvening(new Date(), s.reminders.review?.time);
   const r = weeklyReview(s, todayKey());
   return {
     id: 501,

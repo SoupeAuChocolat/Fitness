@@ -10,7 +10,7 @@ import com.getcapacitor.annotation.CapacitorPlugin
 /** Reçoit les chiffres du jour depuis le JavaScript et rafraîchit le widget. */
 @CapacitorPlugin(name = "MaFormeWidget")
 class WidgetPlugin : Plugin() {
-    private val keys = listOf("kcalLeft", "kcalLabel", "eaten", "steps", "sport", "waterCount", "waterGoal")
+    private val keys = listOf("kcalLeft", "kcalLabel", "eaten", "steps", "sport", "waterCount", "waterGoal", "theme")
 
     @PluginMethod
     fun update(call: PluginCall) {

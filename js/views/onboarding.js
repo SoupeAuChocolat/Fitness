@@ -3,6 +3,7 @@ import * as store from '../store.js';
 import { ACTIVITY_LEVELS, RATES, bmi, bmiLabel, calorieTarget, defaultWaterGoal } from '../calc.js';
 import { todayKey } from '../dates.js';
 import { HABIT_PRESETS } from '../data/habits.js';
+import { setTheme, themePickerHtml } from '../theme.js';
 import { bindActions, esc, nf, parseNum, toast } from '../ui.js';
 
 const STEPS = 4;
@@ -222,6 +223,7 @@ export function render(root, ctx) {
   root.innerHTML = `
     <div class="onboarding">
       <div class="steps">${Array.from({ length: STEPS }, (_, i) => `<span class="${i <= step ? 'on' : ''}"></span>`).join('')}</div>
+      ${step === 0 ? `<div class="card"><div class="card-head"><h2>🎨 Choisis ton thème</h2></div>${themePickerHtml()}</div>` : ''}
       <div class="card">${stepHtml()}</div>
       <p class="error" id="ob-error" role="alert"></p>
       <div class="btn-row">
@@ -240,6 +242,10 @@ export function render(root, ctx) {
   updateBmi();
 
   bindActions(root, {
+    theme(btn) {
+      setTheme(btn.dataset.id);
+      ctx.rerender();
+    },
     f(el) {
       draft[el.dataset.f] = el.value;
       updateBmi();

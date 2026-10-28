@@ -29,6 +29,11 @@ export function applyTheme(id = getTheme()) {
   SystemBars?.setStyle({ style: id === 'default' ? 'DEFAULT' : 'DARK' })?.catch?.(() => {});
 }
 
+export function themePickerHtml() {
+  const cur = getTheme();
+  return `<div class="theme-picker">${THEMES.map((th) => `<button class="theme-opt ${cur === th.id ? 'on' : ''}" data-act="theme" data-id="${th.id}"><span class="theme-swatch sw-${th.id}"></span>${th.label}</button>`).join('')}</div>`;
+}
+
 export function setTheme(id) {
   try {
     localStorage.setItem(KEY, id);

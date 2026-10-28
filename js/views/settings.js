@@ -7,7 +7,7 @@ import { Filesystem, HealthConnect, isNative, Share } from '../native.js';
 import {
   applyReminders, enableReminders, exactAlarmsAllowed, notificationPermission, openExactAlarmSettings, remindersAvailable,
 } from '../reminders.js';
-import { getTheme, setTheme, THEMES } from '../theme.js';
+import { setTheme, themePickerHtml } from '../theme.js';
 import { bindActions, confirmSheet, esc, nf, parseNum, toast } from '../ui.js';
 
 const options = (list, current) =>
@@ -48,6 +48,10 @@ function remindersSection(r) {
           <label class="field"><span>Toutes les</span><select class="input" data-r="water.every">${[1, 2, 3].map((h) => `<option value="${h}" ${Number(r.water.every) === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label></div></div>
       <div class="reminder-block">${toggle('sport', '💪 Séance du jour (lun → sam)')}
         <div class="grid-2">${time('sport.time', r.sport.time, 'Heure')}</div></div>
+      <div class="reminder-block">${toggle('weekly', '🎯 Objectif de la semaine (séance du jour non notée)')}
+        <div class="grid-2">${time('weekly.time', r.weekly.time, 'Heure')}</div></div>
+      <div class="reminder-block">${toggle('review', '📊 Bilan du dimanche')}
+        <div class="grid-2">${time('review.time', r.review.time, 'Heure')}</div></div>
       <div class="reminder-block">${toggle('teeth', '🪥 Brossage de dents')}
         <div class="grid-3">${r.teeth.times.map((t, i) => time(`teeth.times.${i}`, t, TEETH_LABELS[i])).join('')}</div></div>
       <p class="small muted" id="exact-status"></p>
@@ -112,7 +116,7 @@ export function render(root, ctx) {
 
     <section class="card">
       <div class="card-head"><h2>🎨 Thème</h2></div>
-      <div class="theme-picker">${THEMES.map((th) => `<button class="theme-opt ${getTheme() === th.id ? 'on' : ''}" data-act="theme" data-id="${th.id}"><span class="theme-swatch sw-${th.id}"></span>${esc(th.label)}</button>`).join('')}</div>
+      ${themePickerHtml()}
     </section>
 
     ${healthSection(state)}
@@ -257,7 +261,7 @@ export function render(root, ctx) {
         path.slice(0, -1).forEach((k) => (target = target[k]));
         target[path[path.length - 1]] = value;
       }
-      const times = [r.checkin.time, r.water.from, r.water.to, r.sport.time, ...r.teeth.times];
+      const times = [r.checkin.time, r.water.from, r.water.to, r.sport.time, r.weekly.time, r.review.time, ...r.teeth.times];
       if (times.some((x) => !/^\d{2}:\d{2}$/.test(x))) {
         root.querySelector('#reminders-error').textContent = 'Indique toutes les heures.';
         return;

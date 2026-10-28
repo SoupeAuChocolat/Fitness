@@ -37,6 +37,20 @@ class WidgetProvider : AppWidgetProvider() {
             for (id in ids) manager.updateAppWidget(id, views(context))
         }
 
+        // Couleurs du widget selon le thème choisi dans l'app.
+        private fun applyTheme(views: RemoteViews, theme: String) {
+            val (bg, accent, text, muted) = when (theme) {
+                "cyberpunk" -> listOf(R.drawable.widget_bg_cyberpunk, 0xFFFCEE0A, 0xFFF4F4EE, 0xFFCFCFC4)
+                "solo" -> listOf(R.drawable.widget_bg_solo, 0xFF6CBCFF, 0xFFE6F1FF, 0xFFB5CAE6)
+                else -> listOf(R.drawable.widget_bg, 0xFF0B8159, 0xFF121614, 0xFF4A504C)
+            }.map { it.toLong() }
+            views.setInt(R.id.w_root, "setBackgroundResource", bg.toInt())
+            views.setTextColor(R.id.w_title, accent.toInt())
+            views.setTextColor(R.id.w_kcal, if (theme == "default") text.toInt() else accent.toInt())
+            views.setTextColor(R.id.w_kcal_label, muted.toInt())
+            for (id in listOf(R.id.w_eaten, R.id.w_steps, R.id.w_sport, R.id.w_water)) views.setTextColor(id, text.toInt())
+        }
+
         private fun views(context: Context): RemoteViews {
             val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val pending = prefs.getInt(PENDING_WATER, 0)
@@ -50,6 +64,7 @@ class WidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.w_steps, prefs.getString("steps", ""))
             views.setTextViewText(R.id.w_sport, prefs.getString("sport", ""))
             views.setTextViewText(R.id.w_water, "💧 $water / $goal verres")
+            applyTheme(views, prefs.getString("theme", "default") ?: "default")
 
             context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { intent ->
                 val open = PendingIntent.getActivity(
