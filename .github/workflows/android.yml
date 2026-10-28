@@ -1,6 +1,6 @@
 # Construit l'APK Android à chaque modification.
 # - Toutes les branches : l'APK est téléchargeable dans l'onglet « Actions » (artefact MaForme-apk).
-# - Branche main : une version est aussi publiée dans « Releases », facile à ouvrir depuis le téléphone.
+# - Branche principale du dépôt : une version est aussi publiée dans « Releases », facile à ouvrir depuis le téléphone.
 # Signature : secrets MAFORME_KEYSTORE_B64 (fichier maforme.keystore en base64) et
 # MAFORME_KEYSTORE_PASSWORD. Sans eux, l'APK est signé avec une clé de test et n'est pas publié.
 name: APK Android
@@ -68,7 +68,7 @@ jobs:
           path: MaForme.apk
 
       - name: Publier la version
-        if: github.ref == 'refs/heads/main' && steps.key.outputs.signed == 'true'
+        if: github.ref_name == github.event.repository.default_branch && steps.key.outputs.signed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v2.0.${{ github.run_number }}

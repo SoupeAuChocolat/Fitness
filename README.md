@@ -18,7 +18,7 @@ Tes données restent **sur ton téléphone** : rien n'est envoyé sur un serveur
 ## Installer l'app Android
 
 1. Télécharge **MaForme.apk** sur ton téléphone :
-   - depuis le dépôt GitHub → **Releases** (versions de la branche `main`),
+   - depuis le dépôt GitHub → **Releases** (versions de la branche principale),
    - ou depuis l'onglet **Actions** → dernière exécution « APK Android » → artefact **MaForme-apk** (fichier zip à décompresser).
 2. Ouvre le fichier. Android demande d'autoriser l'installation depuis ton navigateur ou ton gestionnaire de fichiers : accepte (une seule fois).
 3. Lance **Ma Forme**, remplis ton profil, puis sur l'écran « Aujourd'hui » :
@@ -35,7 +35,7 @@ Une valeur que tu modifies à la main dans Ma Forme n'est plus remplacée par la
 
 ## Version web (facultatif)
 
-La même app fonctionne dans un navigateur (sans Connexion Santé, rappels ni scan à la caméra ; le code-barres peut être tapé). Pour la mettre en ligne : GitHub Pages (dépôt public) ou <https://app.netlify.com/drop> en glissant le dossier du dépôt, puis « Ajouter à l'écran d'accueil ».
+La même app fonctionne dans un navigateur (sans Connexion Santé, rappels ni scan à la caméra ; le code-barres peut être tapé) : <https://soupeauchocolat.github.io/Fitness/> (GitHub Pages), puis « Ajouter à l'écran d'accueil ». Les données du navigateur et celles de l'app Android sont séparées (passer de l'une à l'autre avec Sauvegarder / Restaurer).
 
 ## Tes données
 
