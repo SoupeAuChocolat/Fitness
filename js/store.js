@@ -8,6 +8,14 @@ let state;
 let onError = () => {};
 const listeners = new Set();
 
+export const DEFAULT_REMINDERS = {
+  enabled: false,
+  checkin: { on: true, time: '21:00' },
+  water: { on: true, from: '09:00', to: '19:00', every: 2 },
+  sport: { on: true, time: '18:00' },
+  teeth: { on: true, times: ['08:00', '13:30', '22:00'] },
+};
+
 export function emptyState() {
   return {
     version: SCHEMA,
@@ -18,10 +26,21 @@ export function emptyState() {
     badges: {},
     program: null,
     activeWorkout: null,
+    health: { enabled: false, lastSync: null, lastSyncDay: null },
+    reminders: structuredClone(DEFAULT_REMINDERS),
+    setupDismissed: false,
   };
 }
 
-const normalize = (s) => ({ ...emptyState(), ...s });
+// Complète un état ancien (ou une sauvegarde) avec les champs ajoutés depuis.
+function normalize(s) {
+  const out = { ...emptyState(), ...s };
+  out.reminders = { ...structuredClone(DEFAULT_REMINDERS), ...(s.reminders || {}) };
+  if (out.profile) {
+    out.profile = { stepsMode: 'budget', teethTracker: true, proteinGoal: null, ...out.profile };
+  }
+  return out;
+}
 
 export function load() {
   try {

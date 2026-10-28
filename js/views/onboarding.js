@@ -16,6 +16,7 @@ const draft = {
   goalWeight: '',
   activity: 1.375,
   rate: 0.5,
+  stepsMode: 'budget',
   habits: {
     sugar: { on: true },
     tobacco: { on: true, perDay: '10', packPrice: '12,5' },
@@ -34,6 +35,9 @@ function profileFromDraft() {
     goalWeight: parseNum(draft.goalWeight),
     activity: Number(draft.activity),
     rate: Number(draft.rate),
+    stepsMode: draft.stepsMode,
+    teethTracker: true,
+    proteinGoal: null,
   };
 }
 
@@ -92,10 +96,22 @@ function stepHtml() {
   }
   if (step === 2) {
     const p = profileFromDraft();
-    const t = calorieTarget(p, p.startWeight, today);
+    const budget = draft.stepsMode === 'budget';
+    const t = calorieTarget(budget ? { ...p, activity: 1.2 } : p, p.startWeight, today);
     const weeks = Math.ceil((p.startWeight - p.goalWeight) / p.rate);
     return `
       <h2>Ton rythme</h2>
+      <div class="field">
+        <span>Les calories brûlées par tes pas</span>
+        <div class="seg">
+          <button class="${budget ? 'on' : ''}" data-act="stepsMode" data-v="budget">Ajoutées au budget</button>
+          <button class="${budget ? '' : 'on'}" data-act="stepsMode" data-v="info">Affichées seulement</button>
+        </div>
+        <small class="muted">${budget
+          ? 'Ton objectif de base correspond à une journée assise ; chaque pas au-delà de 4 000 te donne des calories en plus.'
+          : 'Ton objectif dépend de ton niveau d’activité ; les pas sont affichés pour information.'}</small>
+      </div>
+      ${budget ? '' : `
       <div class="field">
         <span>Ton activité au quotidien (travail + sport prévu)</span>
         <div class="choice-list">
@@ -104,7 +120,7 @@ function stepHtml() {
               <strong>${a.label}</strong><small>${a.desc}</small>
             </button>`).join('')}
         </div>
-      </div>
+      </div>`}
       <div class="field">
         <span>Vitesse de perte de poids</span>
         <div class="seg seg-3">
@@ -112,7 +128,7 @@ function stepHtml() {
         </div>
       </div>
       <div class="callout">
-        <div class="callout-big">${nf(t.target)} kcal / jour</div>
+        <div class="callout-big">${nf(t.target)} kcal / jour${budget ? ' + tes pas' : ''}</div>
         <div class="small">Dépense estimée : ${nf(t.tdee)} kcal. Objectif atteint dans environ <strong>${weeks} semaines</strong>.</div>
         ${t.capped ? '<div class="small warn-text">Objectif ajusté pour rester dans un déficit raisonnable et sans danger.</div>' : ''}
       </div>`;
@@ -237,6 +253,10 @@ export function render(root, ctx) {
     },
     activity(el) {
       draft.activity = Number(el.dataset.v);
+      ctx.rerender();
+    },
+    stepsMode(el) {
+      draft.stepsMode = el.dataset.v;
       ctx.rerender();
     },
     rate(el) {

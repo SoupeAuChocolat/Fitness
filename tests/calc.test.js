@@ -165,3 +165,122 @@ test('le service worker met en cache des fichiers qui existent', () => {
   assert.ok(assets.length > 20);
   for (const a of assets) assert.ok(existsSync(new URL(`../${a}`, import.meta.url)), `manquant : ${a}`);
 });
+
+// --- Version 2 : pas, macros, Connexion Santé, rappels, aliments, exercices -----------
+
+test('calories des pas (ACSM) et objectif du jour', async () => {
+  const { walkingKcal, dailyTarget, proteinTarget, STEP_BASELINE } = await import('../js/calc.js');
+  // 10 000 pas × 0,7387 m = 7,39 km ; 0,5 × 95 kg × 7,39 km ≈ 351 kcal
+  assert.equal(walkingKcal(10000, { heightCm: 178, sex: 'm' }, 95), 351);
+  assert.equal(walkingKcal(0, { heightCm: 178, sex: 'm' }, 95), 0);
+
+  const state = emptyState();
+  state.profile = { ...profile, heightCm: 178, stepsMode: 'budget' };
+  state.days['2026-10-28'] = { steps: 9000 };
+  const t = dailyTarget(state, '2026-10-28');
+  assert.equal(t.bonus, walkingKcal(9000 - STEP_BASELINE, state.profile, 90));
+  assert.equal(t.target, t.base + t.bonus);
+  // base calculée comme une journée sédentaire (facteur 1,2)
+  assert.ok(Math.abs(t.tdee - t.bmr * 1.2) <= 1);
+
+  state.profile.stepsMode = 'info';
+  const info = dailyTarget(state, '2026-10-28');
+  assert.equal(info.bonus, 0);
+  assert.equal(info.target, calorieTarget(state.profile, 90, '2026-10-28').target);
+  assert.equal(proteinTarget(profile), 130); // 80 kg × 1,6 = 128 → arrondi à 5 g
+  assert.equal(proteinTarget({ ...profile, proteinGoal: 110 }), 110);
+});
+
+test('totaux du jour avec macros', async () => {
+  const { dayTotals } = await import('../js/calc.js');
+  const t = dayTotals({ meals: [{ kcal: 300, prot: 20, carb: 30, fat: 10 }, { kcal: 100 }] });
+  assert.deepEqual([t.eaten, t.prot, t.carb, t.fat, t.noMacros], [400, 20, 30, 10, 1]);
+});
+
+test('brossage de dents : série et record', async () => {
+  const { teethStats } = await import('../js/calc.js');
+  const state = emptyState();
+  const all = [true, true, true];
+  state.days['2026-10-20'] = { teeth: all };
+  state.days['2026-10-21'] = { teeth: all };
+  state.days['2026-10-22'] = { teeth: all };
+  state.days['2026-10-26'] = { teeth: all };
+  state.days['2026-10-27'] = { teeth: all };
+  state.days['2026-10-28'] = { teeth: [true, false, true] };
+  assert.deepEqual(teethStats(state, '2026-10-28'), { current: 2, best: 3, total: 5 });
+  state.days['2026-10-28'].teeth = all;
+  assert.equal(teethStats(state, '2026-10-28').current, 3);
+});
+
+test('Connexion Santé : import sans écraser les saisies manuelles', async () => {
+  const { applyHealthData } = await import('../js/health.js');
+  const state = emptyState();
+  state.days['2026-10-27'] = { steps: 5000, manual: { steps: true } };
+  const changed = applyHealthData(state, {
+    steps: [{ date: '2026-10-27', steps: 8000 }, { date: '2026-10-28', steps: 4321 }, { date: '2026-10-26', steps: 0 }],
+    sleep: [{ date: '2026-10-28', minutes: 445 }],
+  });
+  assert.equal(changed, 2);
+  assert.equal(state.days['2026-10-27'].steps, 5000);
+  assert.equal(state.days['2026-10-28'].steps, 4321);
+  assert.equal(state.days['2026-10-28'].sleep, 7.4);
+  assert.deepEqual(state.days['2026-10-28'].sync, { steps: true, sleep: true });
+  assert.equal(state.days['2026-10-26'], undefined);
+});
+
+test('rappels : notifications construites', async () => {
+  const { buildNotifications } = await import('../js/reminders.js');
+  const { DEFAULT_REMINDERS } = await import('../js/store.js');
+  const list = buildNotifications(DEFAULT_REMINDERS);
+  const ids = list.map((n) => n.id);
+  assert.equal(new Set(ids).size, ids.length);
+  // bilan 1 + eau 9h→19h toutes les 2 h (6) + sport lun→sam (6) + dents 3
+  assert.equal(list.length, 1 + 6 + 6 + 3);
+  const monday = list.find((n) => n.id === 301);
+  assert.deepEqual(monday.schedule.on, { weekday: 2, hour: 18, minute: 0 }); // 2 = lundi pour Capacitor
+  assert.ok(!list.some((n) => n.id === 300)); // pas de rappel le dimanche (repos)
+  assert.deepEqual(list.find((n) => n.id === 402).schedule.on, { hour: 22, minute: 0 });
+  const off = buildNotifications({ ...DEFAULT_REMINDERS, water: { ...DEFAULT_REMINDERS.water, on: false }, sport: { ...DEFAULT_REMINDERS.sport, on: false } });
+  assert.equal(off.length, 4);
+});
+
+test('aliments : table CIQUAL, aliments courants et code-barres', async () => {
+  const { COMMON_FOODS, CIQUAL_FOODS, searchFoods, portionValues } = await import('../js/foods.js');
+  const { productToFood } = await import('../js/barcode.js');
+  assert.ok(CIQUAL_FOODS.length > 3000);
+  assert.ok(COMMON_FOODS.every((f) => f.k >= 0 && f.prot != null));
+  const rice = COMMON_FOODS.find((f) => f.n === 'Riz blanc');
+  assert.deepEqual(portionValues(rice, { grams: 100 }), { kcal: 145, prot: 2.9, carb: 31.8, fat: 0.4 });
+  assert.equal(searchFoods(COMMON_FOODS, 'pates cuites')[0].n, 'Pâtes');
+  assert.match(searchFoods(CIQUAL_FOODS, 'pomme crue')[0].n, /^Pomme/);
+  const food = productToFood('123', {
+    product_name_fr: 'Biscuits', brands: 'Marque, Autre', serving_quantity: '25',
+    nutriments: { 'energy-kcal_100g': 480, proteins_100g: 6, carbohydrates_100g: 70, fat_100g: 20 },
+  });
+  assert.deepEqual([food.n, food.k, food.serving, food.prot], ['Biscuits (Marque)', 480, 25, 6]);
+  assert.equal(productToFood('1', { product_name: 'X', nutriments: { energy_100g: 418.4 } }).k, 100);
+});
+
+test('chaque exercice a une photo ou une animation', async () => {
+  const { HOME_EXERCISES, GYM_EXERCISES } = await import('../js/data/exercises.js');
+  const { exerciseId, PHOTO_IDS } = await import('../js/exmedia.js');
+  const { ANIMATIONS } = await import('../js/stick.js');
+  for (const e of [...Object.values(HOME_EXERCISES), ...Object.values(GYM_EXERCISES)]) {
+    const id = exerciseId(e.name);
+    assert.ok(PHOTO_IDS.has(id) || ANIMATIONS[id], `pas de visuel pour ${e.name}`);
+  }
+  for (const id of PHOTO_IDS) {
+    for (const i of [0, 1]) assert.ok(existsSync(new URL(`../img/ex/${id}-${i}.jpg`, import.meta.url)), `photo manquante ${id}-${i}`);
+  }
+});
+
+test('tous les modules JS sont mis en cache hors ligne', async () => {
+  const { readdirSync } = await import('node:fs');
+  const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+  const dirs = ['js', 'js/data', 'js/views'];
+  for (const d of dirs) {
+    for (const f of readdirSync(new URL(`../${d}`, import.meta.url)).filter((x) => x.endsWith('.js'))) {
+      assert.ok(sw.includes(`'${d}/${f}'`), `${d}/${f} absent de sw.js`);
+    }
+  }
+});

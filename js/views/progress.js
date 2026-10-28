@@ -1,7 +1,7 @@
 // Onglet Progrès : courbes, bilan de la semaine, badges.
 import { computeBadges } from '../badges.js';
 import {
-  bmi, bmiLabel, calorieTarget, currentWeight, dayTotals, movingAverage, series, weekSummary, weightTrend,
+  bmi, bmiLabel, currentWeight, dailyTarget, dayTotals, movingAverage, series, weekSummary, weightTrend,
 } from '../calc.js';
 import { renderBarChart, renderLineChart } from '../charts.js';
 import { addDays, diffDays, formatDayMonth, formatFull, formatShort, todayKey, weekdayShort, weekStart } from '../dates.js';
@@ -19,15 +19,17 @@ function delta(cur, prev, { digits = 0, unit = '', lowerIsBetter = false } = {})
   return `<span class="${good ? 'good-text' : 'bad-text'}">${d > 0 ? '▲' : '▼'} ${nf(Math.abs(d), digits)}${unit}</span>`;
 }
 
-function summaryRows(sum, prev) {
+function summaryRows(sum, prev, teeth) {
   const rows = [
     ['⚖️ Poids moyen', sum.weightAvg != null ? fmtKg(sum.weightAvg) : '—', delta(sum.weightAvg, prev?.weightAvg, { digits: 1, unit: ' kg', lowerIsBetter: true })],
     ['🍽️ Calories / jour', sum.kcalAvg != null ? `${nf(sum.kcalAvg)} kcal` : '—', sum.mealDays ? `<small class="muted">${sum.underTarget}/${sum.mealDays} j sous l’objectif</small>` : ''],
+    ['🥩 Protéines / jour', sum.protAvg != null ? `${nf(sum.protAvg)} g` : '—', delta(sum.protAvg, prev?.protAvg, { unit: ' g' })],
     ['💪 Sport', `${sum.workouts} séance${sum.workouts > 1 ? 's' : ''} · ${sum.sportMin} min`, delta(sum.sportMin, prev?.sportMin, { unit: ' min' })],
     ['🔥 Brûlé au sport', `${nf(sum.burned)} kcal`, ''],
     ['💧 Eau', sum.waterAvg != null ? `${nf(sum.waterAvg, 1)} verres / j` : '—', delta(sum.waterAvg, prev?.waterAvg, { digits: 1 })],
     ['😴 Sommeil', sum.sleepAvg != null ? `${nf(sum.sleepAvg, 1)} h / nuit` : '—', delta(sum.sleepAvg, prev?.sleepAvg, { digits: 1, unit: ' h' })],
     ['👣 Pas', sum.stepsAvg != null ? `${nf(sum.stepsAvg)} / j` : '—', delta(sum.stepsAvg, prev?.stepsAvg)],
+    ...(teeth ? [['🪥 Brossage (3 fois)', `${sum.teethDays}/${sum.days} j`, '']] : []),
     ...sum.habits.map((x) => [`${x.habit.icon} ${esc(x.habit.name)}`, `${x.clean}/${x.days} j tenus`, x.fails ? `<small class="bad-text">${x.fails} rechute${x.fails > 1 ? 's' : ''}</small>` : '<small class="good-text">parfait</small>']),
   ];
   return rows.map(([a, b, c]) => `<div class="sum-row"><span>${a}</span><strong>${b}</strong><span class="sum-delta">${c}</span></div>`).join('');
@@ -46,7 +48,7 @@ export function render(root, ctx) {
   const { state } = ctx;
   const p = state.profile;
   const today = todayKey();
-  const targetFor = (k) => calorieTarget(p, currentWeight(state, k), k).target;
+  const targetFor = (k) => dailyTarget(state, k).target;
 
   const weights = series(state, 'weight').filter((x) => x.x <= today);
   const avgAll = movingAverage(weights, 7);
@@ -71,6 +73,16 @@ export function render(root, ctx) {
   });
   const loggedDays = days14.filter((k) => dayTotals(state.days[k]).eaten > 0);
   const kcalAvg = loggedDays.length ? loggedDays.reduce((s, k) => s + dayTotals(state.days[k]).eaten, 0) / loggedDays.length : null;
+
+  const stepBars = days14.map((k) => {
+    const steps = state.days[k]?.steps || 0;
+    return {
+      label: weekdayShort(k).slice(0, 2),
+      value: steps,
+      tip: `<strong>${formatDayMonth(k)}</strong><br>${steps ? `${nf(steps)} pas · ≈ ${nf(dailyTarget(state, k).walkKcal)} kcal` : 'Pas de données'}`,
+    };
+  });
+  const stepDays = stepBars.filter((b) => b.value > 0);
 
   const thisMonday = weekStart(today);
   const weeks = Array.from({ length: 8 }, (_, i) => addDays(thisMonday, (i - 7) * 7));
@@ -121,6 +133,12 @@ export function render(root, ctx) {
     </section>
 
     <section class="card">
+      <div class="card-head"><h2>👣 Pas — 14 jours</h2></div>
+      <div id="chart-steps"></div>
+      <p class="small muted">${stepDays.length ? `Moyenne : <strong>${nf(stepDays.reduce((s, b) => s + b.value, 0) / stepDays.length)} pas</strong> par jour` : 'Aucun pas enregistré sur cette période.'}</p>
+    </section>
+
+    <section class="card">
       <div class="card-head"><h2>💪 Sport — minutes par semaine</h2></div>
       <div id="chart-sport"></div>
     </section>
@@ -133,7 +151,7 @@ export function render(root, ctx) {
       </div>
       ${sum ? `
         <p class="small muted center">Du ${formatDayMonth(sum.start)} au ${formatDayMonth(sum.end)} · comparé à la semaine précédente</p>
-        ${summaryRows(sum, prev)}
+        ${summaryRows(sum, prev, p.teethTracker)}
         <p class="verdict">${verdict(sum)}</p>` : '<p class="muted">Pas de données.</p>'}
     </section>
 
@@ -167,6 +185,7 @@ export function render(root, ctx) {
   renderBarChart(root.querySelector('#chart-kcal'), {
     bars: kcalBars, target: targetFor(today), unit: 'kcal', valueLabel: 'Sous l’objectif', overLabel: 'Au-dessus de l’objectif',
   });
+  renderBarChart(root.querySelector('#chart-steps'), { bars: stepBars, target: p.stepsGoal, targetLabel: 'Objectif', unit: 'pas', height: 170 });
   renderBarChart(root.querySelector('#chart-sport'), { bars: sportBars, unit: 'min', height: 170 });
 
   bindActions(root, {

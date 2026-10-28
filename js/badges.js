@@ -1,5 +1,5 @@
 // Badges de motivation, calculés à partir des données.
-import { calorieTarget, currentWeight, dayTotals, habitStats } from './calc.js';
+import { currentWeight, dailyTarget, dayTotals, habitStats, teethStats } from './calc.js';
 import { weekStart } from './dates.js';
 import { nf } from './ui.js';
 
@@ -16,6 +16,7 @@ export function computeBadges(state, today) {
   let workouts = 0;
   let maxSteps = 0;
   const perWeek = {};
+  const stepsWeek = {};
 
   for (const k of keys) {
     const d = state.days[k];
@@ -23,16 +24,18 @@ export function computeBadges(state, today) {
     if (d.water >= p.waterGoal) waterDays++;
     if (d.sleep >= p.sleepGoal) sleepDays++;
     maxSteps = Math.max(maxSteps, d.steps || 0);
+    if (d.steps) stepsWeek[weekStart(k)] = (stepsWeek[weekStart(k)] || 0) + d.steps;
     const n = (d.workouts || []).length;
     workouts += n;
     if (n) perWeek[weekStart(k)] = (perWeek[weekStart(k)] || 0) + n;
     if (d.meals && d.meals.length) {
       mealDays++;
-      if (d.meals.length >= 2 && dayTotals(d).eaten <= calorieTarget(p, currentWeight(state, k), k).target) underDays++;
+      if (d.meals.length >= 2 && dayTotals(d).eaten <= dailyTarget(state, k).target) underDays++;
     }
   }
 
   const bestWeek = Math.max(0, ...Object.values(perWeek));
+  const bestStepsWeek = Math.max(0, ...Object.values(stepsWeek));
   const weight = currentWeight(state, today);
   const lost = p.startWeight - weight;
   const toLose = p.startWeight - p.goalWeight;
@@ -65,6 +68,14 @@ export function computeBadges(state, today) {
   add('under_30', '🥇', 'Maîtrise totale', '30 jours sous ton objectif calorique', underDays, 30, 'Alimentation');
   add('water_7', '💧', 'Bien hydraté', '7 jours avec l’objectif d’eau atteint', waterDays, 7, 'Bien-être');
   add('sleep_7', '😴', 'Bien reposé', '7 nuits avec ton objectif de sommeil', sleepDays, 7, 'Bien-être');
+
+  if (p.teethTracker) {
+    const teeth = teethStats(state, today);
+    add('teeth_1', '🪥', 'Sourire éclatant', 'Les 3 brossages dans la même journée', teeth.total, 1, 'Bien-être');
+    add('teeth_7', '😁', 'Dents au top', '7 jours d’affilée avec les 3 brossages', teeth.best, 7, 'Bien-être');
+    add('teeth_30', '🦷', 'Hygiène de champion', '30 jours d’affilée avec les 3 brossages', teeth.best, 30, 'Bien-être');
+  }
+  add('steps_70k', '🚶', 'Grand marcheur', '70 000 pas en une semaine', bestStepsWeek, 70000, 'Sport');
 
   add('urges_10', '🧠', 'Plus fort que l’envie', 'Résister à 10 envies', urges, 10, 'Habitudes');
   add('urges_50', '🗿', 'Mental d’acier', 'Résister à 50 envies', urges, 50, 'Habitudes');

@@ -3,6 +3,7 @@ import * as store from '../store.js';
 import { currentWeight, kcalFromMet, lastPerformance } from '../calc.js';
 import { formatRelative } from '../dates.js';
 import { COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, MET_GYM_SESSION, MET_HOME_SESSION, WARMUP } from '../data/exercises.js';
+import { mediaHtml, startAnimations } from '../exmedia.js';
 import { buildGymWorkout, buildHomeWorkout, findExercise, newExercise, planForDate } from '../program.js';
 import { beep, bindActions, confirmSheet, esc, ICON, nf, openSheet, parseNum, toast, unlockAudio } from '../ui.js';
 
@@ -129,6 +130,7 @@ function exerciseCard(ex, i, w, state) {
         <h3>${esc(ex.name)}</h3>
         <button class="icon-btn" data-act="info" data-i="${i}" aria-label="Comment faire">${ICON.info}</button>
       </div>
+      ${mediaHtml(ex.name, 'sm')}
       <p class="small muted">${ex.sets.length} série${ex.sets.length > 1 ? 's' : ''}${target ? ` × ${target}${ex.mode === 'time' ? ' s' : ''}` : ''}${ex.perSide ? ' par côté' : ''}
         ${last ? `<br>Dernière fois : ${last.sets.map((s) => `${s.reps ?? '?'}${s.kg != null ? ` × ${nf(s.kg, 1)} kg` : ''}`).join(', ')}` : ''}</p>
       <div class="sets">${ex.sets.map((s, j) => setRow(ex, i, j, s, showKg)).join('')}</div>
@@ -185,6 +187,7 @@ export function render(root, ctx) {
       <button class="btn btn-primary grow" data-act="finish">Terminer la séance</button>
     </div>`;
 
+  startAnimations(root);
   clearInterval(elapsedTimer);
   const tickElapsed = () => {
     const el = document.getElementById('elapsed');
@@ -272,7 +275,8 @@ export function render(root, ctx) {
       const lib = findExercise(ex.name);
       openSheet({
         title: ex.name,
-        html: lib ? `<p>${esc(lib.desc)}</p>${lib.easier ? `<p class="small muted">Plus facile : ${esc(lib.easier)}</p>` : ''}` : '<p class="muted">Exercice personnalisé.</p>',
+        html: `${mediaHtml(ex.name, 'lg')}${lib ? `<p>${esc(lib.desc)}</p>${lib.easier ? `<p class="small muted">Plus facile : ${esc(lib.easier)}</p>` : ''}` : '<p class="muted">Exercice personnalisé.</p>'}`,
+        onMount: (body) => startAnimations(body),
       });
     },
     rest(el) {

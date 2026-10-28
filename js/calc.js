@@ -57,6 +57,43 @@ export function calorieTarget(profile, weight, today) {
   };
 }
 
+// --- Pas -------------------------------------------------------------------------
+// Longueur de pas estimée à partir de la taille (≈ 41,5 % chez l'homme, 41,3 % chez la femme).
+export const strideMeters = (profile) => (profile.heightCm / 100) * (profile.sex === 'f' ? 0.413 : 0.415);
+
+// Coût net de la marche, équation métabolique de l'ACSM : 0,1 ml d'O2 par kg et par mètre,
+// soit ≈ 0,5 kcal par kg et par km (1 litre d'O2 ≈ 5 kcal). Le métabolisme de repos,
+// déjà compté dans la dépense de base, n'est pas inclus.
+export function walkingKcal(steps, profile, weight) {
+  const km = (steps * strideMeters(profile)) / 1000;
+  return Math.round(0.5 * weight * km);
+}
+
+// Les ~4 000 premiers pas de la journée sont déjà inclus dans la dépense « sédentaire ».
+export const STEP_BASELINE = 4000;
+
+export const proteinTarget = (profile) => profile.proteinGoal || Math.round((profile.goalWeight * 1.6) / 5) * 5;
+
+// Objectif calorique du jour. En mode « budget », la base est celle d'une journée
+// sédentaire et les pas au-delà de STEP_BASELINE s'ajoutent.
+export function dailyTarget(state, key) {
+  const p = state.profile;
+  const weight = currentWeight(state, key);
+  const steps = state.days[key]?.steps || 0;
+  const budget = p.stepsMode !== 'info';
+  const base = calorieTarget(budget ? { ...p, activity: 1.2 } : p, weight, key);
+  const bonus = budget ? walkingKcal(Math.max(0, steps - STEP_BASELINE), p, weight) : 0;
+  return {
+    ...base,
+    base: base.target,
+    bonus,
+    target: base.target + bonus,
+    steps,
+    walkKcal: walkingKcal(steps, p, weight),
+    protein: proteinTarget(p),
+  };
+}
+
 export const defaultWaterGoal = (weight, glassMl = 250) => clamp(Math.round((weight * 30) / glassMl), 6, 14);
 
 export const bmi = (weight, heightCm) => weight / (heightCm / 100) ** 2;
@@ -77,6 +114,11 @@ export function dayTotals(day = {}) {
   const workouts = day.workouts || [];
   return {
     eaten: Math.round(sum(meals, 'kcal')),
+    prot: Math.round(sum(meals, 'prot')),
+    carb: Math.round(sum(meals, 'carb')),
+    fat: Math.round(sum(meals, 'fat')),
+    // nombre d'aliments sans valeurs nutritionnelles détaillées
+    noMacros: meals.filter((m) => m.prot == null).length,
     burned: Math.round(sum(workouts, 'kcal')),
     sportMin: Math.round(sum(workouts, 'minutes')),
     items: meals.length,
@@ -202,6 +244,26 @@ export function cleanSinceMs(habit, stats) {
   return parseKey(habit.startDate).getTime();
 }
 
+// Brossage de dents : un jour est réussi quand les 3 brossages sont cochés.
+export const teethDone = (day) => !!day?.teeth && day.teeth.filter(Boolean).length === 3;
+
+export function teethStats(state, today) {
+  let current = teethDone(state.days[today]) ? 1 : 0;
+  for (let k = addDays(today, -1); teethDone(state.days[k]); k = addDays(k, -1)) current++;
+  let best = 0;
+  let run = 0;
+  let prev = null;
+  let total = 0;
+  for (const k of Object.keys(state.days).sort()) {
+    if (k > today || !teethDone(state.days[k])) continue;
+    total++;
+    run = prev && diffDays(prev, k) === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = k;
+  }
+  return { current, best, total };
+}
+
 // Dernière performance enregistrée pour un exercice (pour la progression en salle).
 export function lastPerformance(state, name, upTo) {
   const keys = Object.keys(state.days)
@@ -224,10 +286,9 @@ export function frequentFoods(state, today, limit = 12) {
   for (const k of keysBetween(addDays(today, -60), today)) {
     for (const m of state.days[k]?.meals || []) {
       const id = `${m.name}|${m.qty || ''}`;
-      const e = map.get(id) || { name: m.name, qty: m.qty, kcal: m.kcal, n: 0, last: k };
+      const e = map.get(id) || { name: m.name, qty: m.qty, n: 0 };
       e.n++;
-      e.kcal = m.kcal;
-      e.last = k;
+      Object.assign(e, { kcal: m.kcal, prot: m.prot ?? null, carb: m.carb ?? null, fat: m.fat ?? null, last: k });
       map.set(id, e);
     }
   }
@@ -243,6 +304,7 @@ export function weekSummary(state, start, today, targetFor) {
   const pick = (f) => days.map(([, d]) => d[f]).filter((v) => v != null);
   const mealDays = days.filter(([, d]) => d.meals && d.meals.length);
   const kcals = mealDays.map(([, d]) => dayTotals(d).eaten);
+  const prots = mealDays.map(([, d]) => dayTotals(d).prot);
   const workouts = days.flatMap(([, d]) => d.workouts || []);
 
   const habits = state.habits
@@ -259,6 +321,8 @@ export function weekSummary(state, start, today, targetFor) {
     days: keys.length,
     weightAvg: avg(pick('weight')),
     kcalAvg: kcals.length ? Math.round(avg(kcals)) : null,
+    protAvg: prots.length ? Math.round(avg(prots)) : null,
+    teethDays: days.filter(([, d]) => teethDone(d)).length,
     mealDays: mealDays.length,
     underTarget: mealDays.filter(([k, d]) => dayTotals(d).eaten <= targetFor(k)).length,
     workouts: workouts.length,

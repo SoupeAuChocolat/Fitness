@@ -1,0 +1,81 @@
+# Construit l'APK Android à chaque modification.
+# - Toutes les branches : l'APK est téléchargeable dans l'onglet « Actions » (artefact MaForme-apk).
+# - Branche main : une version est aussi publiée dans « Releases », facile à ouvrir depuis le téléphone.
+# Signature : secrets MAFORME_KEYSTORE_B64 (fichier maforme.keystore en base64) et
+# MAFORME_KEYSTORE_PASSWORD. Sans eux, l'APK est signé avec une clé de test et n'est pas publié.
+name: APK Android
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Dépendances
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Préparer l'app web pour Android
+        run: npm run android:sync
+
+      - name: Clé de signature
+        id: key
+        env:
+          KEYSTORE_B64: ${{ secrets.MAFORME_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/app/maforme.keystore
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secret MAFORME_KEYSTORE_B64 absent : APK signé avec une clé de test, non publié."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Construire l'APK
+        working-directory: android
+        env:
+          MAFORME_KEYSTORE_PASSWORD: ${{ secrets.MAFORME_KEYSTORE_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Renommer l'APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk MaForme.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MaForme-apk
+          path: MaForme.apk
+
+      - name: Publier la version
+        if: github.ref == 'refs/heads/main' && steps.key.outputs.signed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.0.${{ github.run_number }}
+          name: Ma Forme 2.0.${{ github.run_number }}
+          body: |
+            Télécharge **MaForme.apk** depuis ton téléphone Android et ouvre-le pour l'installer
+            (autorise l'installation depuis ton navigateur si Android le demande).
+            Une nouvelle version s'installe par-dessus l'ancienne sans perdre tes données.
+          files: MaForme.apk
+          make_latest: true

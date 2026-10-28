@@ -1,0 +1,18 @@
+{
+  "appId": "fr.maforme.app",
+  "appName": "Ma Forme",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DEFAULT"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#0E9F6E"
+    }
+  }
+}

@@ -1,78 +1,91 @@
 # Ma Forme 🌱
 
-Application web simple, en français, pour **perdre du poids** et **reprendre de bonnes habitudes**, au quotidien, sur ton téléphone.
+Application Android (et web), en français, pour **perdre du poids** et **reprendre de bonnes habitudes**, au quotidien.
 
 - ⚖️ **Mesures** : poids, tour de taille, eau, sommeil, pas
-- 🍽️ **Repas** : plus de 130 aliments courants avec leurs calories, aliments perso, « fréquents » en 1 clic, « comme hier »
-- 🎯 **Objectif calorique** calculé selon ton profil (formule de Mifflin-St Jeor), ajusté quand ton poids baisse
-- 💪 **Sport** : programme débutant progressif (maison sans matériel ou salle), séance guidée avec minuteurs de repos et chrono, cardio avec estimation des calories, charges notées en salle
-- 🛡️ **Habitudes à arrêter** (sucre, tabac, masturbation / porno, alcool, ou les tiennes) : check-in quotidien « Tenu / Craqué », série en cours, record, calendrier, paliers, argent économisé, bouton 🆘 avec respiration guidée et conseils, suivi des déclencheurs, frise des bénéfices de l'arrêt du tabac
-- 📈 **Progrès** : courbe de poids avec moyenne sur 7 jours et date estimée d'objectif, calories sur 14 jours, sport par semaine, bilan de la semaine, badges
+- 👣 **Pas et sommeil automatiques** depuis **Connexion Santé** (Health Connect), avec les calories brûlées en marchant
+- 🍽️ **Repas** : plus de 3 000 aliments (table officielle **CIQUAL** de l'ANSES) + 137 aliments courants en portions, **scan de code-barres** (Open Food Facts), aliments perso, « fréquents » en 1 clic, « comme hier »
+- 🥩 **Protéines, glucides, lipides** avec un objectif de protéines
+- 🎯 **Objectif calorique** calculé selon ton profil, qui augmente avec tes pas
+- 💪 **Sport** : programme débutant progressif (maison sans matériel ou salle), **photos animées ou animations** pour chaque exercice, séance guidée avec minuteurs, cardio, charges notées en salle
+- 🛡️ **Habitudes à arrêter** (sucre, tabac, masturbation / porno, alcool, ou les tiennes) : check-in « Tenu / Craqué », séries, calendrier, argent économisé, bouton 🆘 avec respiration guidée
+- 🪥 **Brossage de dents** matin, midi et soir, avec série de jours parfaits
+- 🔔 **Rappels** : bilan du soir, eau, séance de sport, brossage de dents
+- 📈 **Progrès** : courbes, pas, calories, sport, bilan de la semaine, badges
 
-L'app marche **hors ligne**, s'installe sur l'écran d'accueil comme une vraie application, et **tes données restent sur ton téléphone** : rien n'est envoyé sur Internet.
+Tes données restent **sur ton téléphone** : rien n'est envoyé sur un serveur (seul le scan de code-barres interroge Open Food Facts avec le numéro du produit).
 
-## Installer l'app sur ton téléphone
+## Installer l'app Android
 
-L'app doit d'abord être mise en ligne (c'est gratuit). Le code ne contient aucune donnée personnelle : tes données sont créées et gardées uniquement dans le navigateur de ton téléphone.
+1. Télécharge **MaForme.apk** sur ton téléphone :
+   - depuis le dépôt GitHub → **Releases** (versions de la branche `main`),
+   - ou depuis l'onglet **Actions** → dernière exécution « APK Android » → artefact **MaForme-apk** (fichier zip à décompresser).
+2. Ouvre le fichier. Android demande d'autoriser l'installation depuis ton navigateur ou ton gestionnaire de fichiers : accepte (une seule fois).
+3. Lance **Ma Forme**, remplis ton profil, puis sur l'écran « Aujourd'hui » :
+   - **Connecter Connexion Santé** → coche « Pas » et « Sommeil » ;
+   - **Activer les rappels** → autorise les notifications.
 
-### Option A — GitHub Pages
+Les nouvelles versions s'installent **par-dessus** l'ancienne : tes données sont conservées (toutes les versions sont signées avec la même clé).
 
-GitHub Pages est gratuit pour les dépôts **publics** (pour un dépôt privé, il faut un abonnement GitHub payant).
+### Mes pas n'apparaissent pas ?
 
-1. Sur GitHub, ouvre le dépôt → **Settings** → **General** → tout en bas, **Change visibility** → **Public** (facultatif si tu as GitHub Pro).
-2. **Settings** → **Pages** → *Source* : **Deploy from a branch** → choisis la branche qui contient l'app (par ex. `main`) et le dossier **/ (root)** → **Save**.
-3. Après 1 à 2 minutes, l'adresse s'affiche en haut de la page, du type `https://soupeauchocolat.github.io/Fitness/`.
+Ma Forme lit les pas que Connexion Santé a reçus. Ouvre **Connexion Santé → Données et accès → Activité → Pas** : s'il n'y a rien, aucune app ne lui envoie tes pas. Sur beaucoup de téléphones Android 14+, le téléphone compte les pas tout seul ; sinon installe **Google Fit** et active le partage vers Connexion Santé dans ses réglages.
 
-### Option B — Netlify (le dépôt peut rester privé)
+Une valeur que tu modifies à la main dans Ma Forme n'est plus remplacée par la synchronisation pour ce jour-là.
 
-1. Télécharge le dépôt en ZIP (bouton **Code** → **Download ZIP**) et décompresse-le.
-2. Va sur <https://app.netlify.com/drop> et glisse-dépose le dossier : tu obtiens une adresse en `https://….netlify.app`.
+## Version web (facultatif)
 
-### Ajouter l'app à l'écran d'accueil
-
-- **iPhone (Safari)** : ouvre l'adresse → bouton **Partager** → **Sur l'écran d'accueil**.
-- **Android (Chrome)** : ouvre l'adresse → menu **⋮** → **Installer l'application** (ou **Ajouter à l'écran d'accueil**).
-
-Ouvre ensuite toujours l'app depuis son icône : c'est là que tes données sont gardées.
+La même app fonctionne dans un navigateur (sans Connexion Santé, rappels ni scan à la caméra ; le code-barres peut être tapé). Pour la mettre en ligne : GitHub Pages (dépôt public) ou <https://app.netlify.com/drop> en glissant le dossier du dépôt, puis « Ajouter à l'écran d'accueil ».
 
 ## Tes données
 
-- Elles sont stockées dans le navigateur de ton téléphone, rien ne part sur Internet.
-- **Réglages → Sauvegarder** crée un fichier de sauvegarde ; **Restaurer** le recharge (pratique pour changer de téléphone).
-- Si tu effaces les données de ton navigateur ou désinstalles l'app, les données sont perdues : fais une sauvegarde de temps en temps.
+- Stockées dans l'app sur le téléphone (et dans la sauvegarde Android automatique si elle est activée).
+- **Réglages → Sauvegarder** crée un fichier de sauvegarde à garder où tu veux (Drive, mail…) ; **Restaurer** le recharge.
 
 ## Comment ça marche
 
-- **Calories** : métabolisme de base (Mifflin-St Jeor) × niveau d'activité, moins un déficit selon le rythme choisi (0,25 / 0,5 / 0,75 kg par semaine). Le déficit est limité à 25 % de la dépense, avec un minimum de 1 500 kcal (homme) ou 1 200 kcal (femme). Les calories du sport sont affichées à part et ne sont pas « rajoutées » à l'objectif.
-- **Habitudes** : un jour non noté compte comme tenu ; seul « Craqué » remet la série à zéro. L'argent économisé se base sur le nombre total de jours tenus depuis le début.
-- **Programme sport** : Lun / Mer / Ven renforcement (séances A et B en alternance), Mar / Sam cardio, Jeu repos actif, Dim repos. Le niveau maison augmente toutes les 2 semaines (modifiable dans l'onglet Sport).
+- **Calories de base** : métabolisme de base (Mifflin-St Jeor) × 1,2 (journée assise), moins un déficit selon le rythme choisi (0,25 / 0,5 / 0,75 kg par semaine). Déficit limité à 25 % de la dépense, minimum 1 500 kcal (homme) ou 1 200 kcal (femme).
+- **Calories des pas** : équation métabolique de la marche de l'**ACSM** (American College of Sports Medicine) : coût net ≈ 0,1 ml d'O₂ par kg et par mètre, soit **≈ 0,5 kcal par kg et par km** (1 L d'O₂ ≈ 5 kcal). Longueur de pas estimée à 41,5 % de la taille (homme) ou 41,3 % (femme). Les 4 000 premiers pas de la journée sont considérés comme déjà compris dans la dépense de base ; au-delà, les calories s'ajoutent à l'objectif du jour (réglable : « affichées seulement »).
+- **Protéines** : 1,6 g par kg de poids objectif (modifiable).
+- **Habitudes** : un jour non noté compte comme tenu ; seul « Craqué » remet la série à zéro.
+- **Programme sport** : Lun / Mer / Ven renforcement (A/B en alternance), Mar / Sam cardio, Jeu repos actif, Dim repos. Le niveau maison augmente toutes les 2 semaines.
+
+## Sources des données
+
+- Aliments : table de composition nutritionnelle **CIQUAL 2020**, ANSES ([ciqual.anses.fr](https://ciqual.anses.fr)), licence ouverte. Quand l'énergie n'est pas renseignée, elle est calculée à partir des macronutriments (coefficients du règlement UE 1169/2011).
+- Produits scannés : [Open Food Facts](https://world.openfoodfacts.org), base collaborative (ODbL).
+- Photos d'exercices : [Free Exercise DB](https://github.com/yuhonas/free-exercise-db) (domaine public, Unlicense). Les 5 exercices sans photo sont animés en dessin.
 
 ## Pour les développeurs
 
-Aucune dépendance, aucune compilation : HTML, CSS et JavaScript (modules ES).
+L'app web (HTML, CSS, JavaScript en modules ES, sans compilation) est à la racine. Le projet Android ([Capacitor](https://capacitorjs.com) 8) est dans `android/`.
 
 ```bash
-npm start   # sert l'app sur http://localhost:8080 (python3 -m http.server)
-npm test    # tests des calculs (node --test)
+npm install            # Capacitor et ses plugins
+npm start              # app web sur http://localhost:8080
+npm test               # tests (node --test)
+npm run android:apk    # copie l'app dans www/, synchronise Android, construit l'APK
+                       # → android/app/build/outputs/apk/release/app-release.apk
 ```
 
+Il faut Node 22+, Java 21 et le SDK Android (variable `ANDROID_HOME` ou `android/local.properties`). GitHub Actions construit l'APK à chaque push (`.github/workflows/android.yml`).
+
 ```
-index.html              page unique
-manifest.webmanifest    installation sur l'écran d'accueil
-sw.js                   service worker (hors ligne)
-css/style.css           styles (clair / sombre)
-js/app.js               routage et barre d'onglets
-js/store.js             données (localStorage)
-js/calc.js              calculs : calories, tendances, séries d'habitudes, bilans
-js/program.js           programme sportif
-js/badges.js            badges
-js/charts.js            graphiques SVG
-js/data/                aliments, exercices, habitudes, citations
-js/views/               écrans
-tests/                  tests unitaires
+index.html, css/, js/          app web (aussi utilisée telle quelle dans l'app Android)
+js/native.js                   accès aux plugins Android (null dans un navigateur)
+js/health.js                   synchronisation Connexion Santé
+js/reminders.js                rappels (notifications locales)
+js/barcode.js                  scan + Open Food Facts
+js/foods.js, js/data/ciqual.js base d'aliments (CIQUAL générée par scripts/ciqual-to-js.py)
+js/exmedia.js, js/stick.js     photos et animations des exercices (img/ex/)
+android/app/src/main/java/fr/maforme/app/HealthConnectPlugin.kt   plugin Connexion Santé
+scripts/build-web.js           prépare www/ pour Android
+tests/                         tests
 ```
 
-Si tu ajoutes un fichier, ajoute-le aussi à la liste `ASSETS` de `sw.js` (un test le vérifie).
+Si tu ajoutes un fichier JavaScript, ajoute-le à la liste `ASSETS` de `sw.js` (un test le vérifie).
+
+**Clé de signature** : toutes les versions doivent être signées avec la même clé pour s'installer par-dessus la précédente. La clé n'est pas dans le dépôt : en local, `android/app/maforme.keystore` + `android/keystore.properties` (`storePassword=…`) ; sur GitHub, les secrets `MAFORME_KEYSTORE_B64` (fichier en base64) et `MAFORME_KEYSTORE_PASSWORD`. Sans clé, l'APK est signé avec une clé de test. **Garde une copie de la clé** : si elle est perdue, il faudra désinstaller l'app (après une sauvegarde) pour installer une nouvelle version.
 
 ## Avertissement
 

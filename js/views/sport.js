@@ -3,6 +3,7 @@ import * as store from '../store.js';
 import { currentWeight, kcalFromMet } from '../calc.js';
 import { addDays, formatRelative, todayKey, weekStart, weekdayShort } from '../dates.js';
 import { CARDIO, COOLDOWN, GYM_EXERCISES, HOME_EXERCISES, WARMUP } from '../data/exercises.js';
+import { mediaHtml, startAnimations } from '../exmedia.js';
 import { homeLevel, LEVEL_NAMES, planForDate } from '../program.js';
 import { bindActions, confirmSheet, dateNav, esc, ICON, nf, openSheet, parseNum, toast } from '../ui.js';
 import { startFree, startPlanned } from './workout.js';
@@ -82,6 +83,7 @@ function workoutLine(w, key, withDate) {
 const exerciseList = (lib) => Object.values(lib).map((e) => `
   <details class="ex-detail">
     <summary>${esc(e.name)} <small class="muted">${e.mode === 'time' ? 'en secondes' : 'en répétitions'}${e.perSide ? ', par côté' : ''}</small></summary>
+    ${mediaHtml(e.name, 'md')}
     <p>${esc(e.desc)}</p>
     ${e.easier ? `<p class="small muted">Plus facile : ${esc(e.easier)}</p>` : ''}
   </details>`).join('');
@@ -163,6 +165,9 @@ export function render(root, ctx) {
       <div class="card-head"><h2>🕒 Dernières séances</h2></div>
       ${history.map(([k, w]) => workoutLine(w, k, true)).join('')}
     </section>` : ''}`;
+
+  // les animations ne démarrent qu'à l'ouverture de la fiche d'exercice
+  root.querySelectorAll('.ex-detail').forEach((d) => d.addEventListener('toggle', () => d.open && startAnimations(d)));
 
   bindActions(root, {
     ...ctx.dateHandlers,

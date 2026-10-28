@@ -2,7 +2,10 @@
 import * as store from './store.js';
 import { checkNewBadges } from './badges.js';
 import { addDays, todayKey } from './dates.js';
-import { esc, ICON, toast } from './ui.js';
+import { syncHealth } from './health.js';
+import { App, isNative, SystemBars } from './native.js';
+import { applyReminders, onReminderTap } from './reminders.js';
+import { closeTopSheet, esc, ICON, toast } from './ui.js';
 import * as habit from './views/habit.js';
 import * as habits from './views/habits.js';
 import * as meals from './views/meals.js';
@@ -151,15 +154,16 @@ function init() {
   window.addEventListener('hashchange', render);
 
   // Passage à un nouveau jour pendant que l'app reste ouverte.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+  const onResume = () => {
     const now = todayKey();
     if (now !== lastToday) {
       if (ui.date === lastToday) ui.date = now;
       lastToday = now;
       render();
     }
-  });
+    syncHealth().catch(() => {});
+  };
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && onResume());
 
   let resizeTimer;
   let lastWidth = window.innerWidth;
@@ -173,10 +177,31 @@ function init() {
 
   render();
 
-  navigator.storage?.persist?.().catch(() => {});
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (isNative) initAndroid(onResume);
+  else {
+    navigator.storage?.persist?.().catch(() => {});
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
   }
+}
+
+function initAndroid(onResume) {
+  document.body.classList.add('native');
+  SystemBars?.setStyle({ style: 'DEFAULT' }).catch?.(() => {});
+  // Bouton retour : ferme la feuille ouverte, sinon revient en arrière, sinon quitte l'app.
+  App?.addListener('backButton', () => {
+    if (closeTopSheet()) return;
+    if (currentRoute === 'today' || currentRoute === 'onboarding') App.exitApp();
+    else if (currentRoute === 'settings') location.hash = lastHash;
+    else history.length > 1 ? history.back() : go('today');
+  });
+  App?.addListener('resume', onResume);
+  onReminderTap((route) => route && go(route));
+  const state = store.get();
+  syncHealth({ force: true }).catch(() => {});
+  // Reprogramme les rappels (après une mise à jour de l'app ou un redémarrage).
+  if (state.reminders.enabled) applyReminders(state.reminders).catch(() => {});
 }
 
 init();

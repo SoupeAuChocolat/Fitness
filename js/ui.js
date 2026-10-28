@@ -79,6 +79,14 @@ export function openSheet({ title, html, onMount, onClose, className = '' }) {
   return { body, close };
 }
 
+// Ferme la feuille ouverte au premier plan (bouton retour Android). Renvoie false s'il n'y en a pas.
+export function closeTopSheet() {
+  const sheets = document.querySelectorAll('.sheet-backdrop.open');
+  if (!sheets.length) return false;
+  sheets[sheets.length - 1].querySelector('[data-close]')?.click();
+  return true;
+}
+
 export function confirmSheet({ title, message, ok = 'Confirmer', danger = false }) {
   return new Promise((resolve) => {
     let answered = false;

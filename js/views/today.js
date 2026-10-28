@@ -1,10 +1,13 @@
 // Tableau de bord du jour.
 import * as store from '../store.js';
-import { calorieTarget, currentWeight, dayTotals, habitStats, latestValue } from '../calc.js';
+import { currentWeight, dailyTarget, dayTotals, habitStats, latestValue, STEP_BASELINE, teethStats } from '../calc.js';
 import { addDays, diffDays, todayKey } from '../dates.js';
 import { QUOTES } from '../data/quotes.js';
 import { openFailSheet, openSosPicker, toggleOk } from '../habit-actions.js';
+import { connectHealth, healthAvailable, syncHealth } from '../health.js';
+import { isNative } from '../native.js';
 import { planForDate } from '../program.js';
+import { enableReminders } from '../reminders.js';
 import { bindActions, dateNav, esc, fmtKg, ICON, nf, parseNum, plural, progressBar, toast } from '../ui.js';
 import { openActivitySheet } from './sport.js';
 import { startPlanned } from './workout.js';
@@ -13,6 +16,25 @@ function greeting(name) {
   const h = new Date().getHours();
   const hello = h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir';
   return `${hello}${name ? ` ${esc(name)}` : ''} 👋`;
+}
+
+const TEETH_SLOTS = ['Matin', 'Midi', 'Soir'];
+
+function setupCard(state) {
+  const health = state.health.enabled;
+  const reminders = state.reminders.enabled;
+  if (!isNative || state.setupDismissed || (health && reminders)) return '';
+  return `
+    <section class="card setup-card">
+      <div class="card-head"><h2>📱 Configurer l’app</h2>
+        <button class="icon-btn" data-act="dismissSetup" aria-label="Masquer">${ICON.x}</button></div>
+      ${health ? '<p class="small good-text">✓ Connexion Santé connectée</p>' : `
+        <p class="small">Récupère automatiquement tes pas et ton sommeil depuis Connexion Santé.</p>
+        <button class="btn btn-primary btn-block" data-act="connectHealth">🔗 Connecter Connexion Santé</button>`}
+      ${reminders ? '<p class="small good-text">✓ Rappels activés</p>' : `
+        <p class="small">Rappels : bilan du soir, eau, sport et brossage de dents (réglables dans Réglages).</p>
+        <button class="btn btn-block" data-act="enableReminders">🔔 Activer les rappels</button>`}
+    </section>`;
 }
 
 function ring(ratio, over) {
@@ -33,7 +55,8 @@ export function render(root, ctx) {
   const day = state.days[key] || {};
   const p = state.profile;
   const weight = currentWeight(state, key);
-  const target = calorieTarget(p, weight, key).target;
+  const goal = dailyTarget(state, key);
+  const target = goal.target;
   const t = dayTotals(day);
   const left = target - t.eaten;
   const over = left < 0;
@@ -46,10 +69,15 @@ export function render(root, ctx) {
   const quote = QUOTES[((diffDays('2024-01-01', key) % QUOTES.length) + QUOTES.length) % QUOTES.length];
   const water = day.water || 0;
   const drops = Math.max(p.waterGoal, water);
+  const budget = p.stepsMode !== 'info';
+  const teeth = day.teeth || [false, false, false];
+  const teethStreak = p.teethTracker ? teethStats(state, key).current : 0;
+  const synced = (field) => (day.sync?.[field] && !day.manual?.[field] ? '<small class="sync-tag">🔄 Connexion Santé</small>' : '');
 
   root.innerHTML = `
     ${dateNav(key)}
     ${isToday ? `<div class="hello"><h1>${greeting(p.name)}</h1><p class="quote">« ${esc(quote)} »</p></div>` : ''}
+    ${isToday ? setupCard(state) : ''}
 
     <a class="card card-link cal-card" href="#/meals">
       <div class="ring-wrap">
@@ -58,8 +86,9 @@ export function render(root, ctx) {
       </div>
       <div class="cal-stats">
         <div><small>Objectif</small><strong>${nf(target)}</strong></div>
+        ${goal.bonus ? `<div class="sub-stat"><small>dont pas</small><small>+${nf(goal.bonus)}</small></div>` : ''}
         <div><small>Mangé</small><strong>${nf(t.eaten)}</strong></div>
-        <div><small>Brûlé (sport)</small><strong>${nf(t.burned)}</strong></div>
+        <div><small>Protéines</small><strong>${nf(t.prot)} / ${nf(goal.protein)} g</strong></div>
         <span class="link">${t.items ? 'Voir mes repas' : 'Ajouter un repas'} ›</span>
       </div>
     </a>
@@ -77,7 +106,7 @@ export function render(root, ctx) {
       ${day.weight != null && prevWeight != null ? `<p class="small ${day.weight <= prevWeight ? 'good-text' : 'muted'}">${day.weight <= prevWeight ? '▼' : '▲'} ${nf(Math.abs(day.weight - prevWeight), 1)} kg depuis la dernière pesée</p>` : ''}
       <div class="goal-line small">
         <span>Départ ${fmtKg(p.startWeight)}</span>
-        <span>${lost >= 0 ? `<strong>−${nf(lost, 1)} kg</strong>` : `+${nf(-lost, 1)} kg`}</span>
+        <span>${lost >= 0.05 ? `<strong>−${nf(lost, 1)} kg</strong>` : lost <= -0.05 ? `+${nf(-lost, 1)} kg` : '0 kg'}</span>
         <span>Objectif ${fmtKg(p.goalWeight)}</span>
       </div>
       ${progressBar(lost / (p.startWeight - p.goalWeight), 'bar-accent')}
@@ -94,24 +123,37 @@ export function render(root, ctx) {
     </section>
 
     <section class="card">
-      <div class="grid-2">
-        <div class="field">
-          <span>😴 Sommeil</span>
-          <div class="stepper">
-            <button class="icon-btn" data-act="sleep" data-d="-0.5" aria-label="Moins">${ICON.minus}</button>
-            <strong>${day.sleep != null ? `${nf(day.sleep, 1)} h` : '—'}</strong>
-            <button class="icon-btn" data-act="sleep" data-d="0.5" aria-label="Plus">${ICON.plus}</button>
-          </div>
-          <small class="muted">Objectif ${nf(p.sleepGoal, 1)} h</small>
+      <div class="card-head"><h2>👣 Pas</h2>
+        ${state.health.enabled ? `<button class="btn btn-sm btn-ghost" data-act="sync">🔄 Synchroniser</button>`
+          : healthAvailable() ? '<button class="btn btn-sm btn-ghost" data-act="connectHealth">🔗 Connexion Santé</button>' : ''}</div>
+      <div class="steps-row">
+        <input class="input input-big" inputmode="numeric" enterkeyhint="done" data-change="steps" value="${day.steps ?? ''}" placeholder="0" aria-label="Nombre de pas">
+        <div class="steps-kcal"><strong>≈ ${nf(goal.walkKcal)} kcal</strong><small>brûlées en marchant</small></div>
+      </div>
+      ${progressBar((day.steps || 0) / p.stepsGoal)}
+      <div class="goal-line small"><span class="muted">Objectif ${nf(p.stepsGoal)}</span>${synced('steps')}</div>
+      ${budget ? `<p class="small muted">${goal.bonus ? `+${nf(goal.bonus)} kcal ajoutées à ton objectif du jour.` : `Au-delà de ${nf(STEP_BASELINE)} pas, tes pas augmentent ton objectif de calories.`}</p>` : ''}
+    </section>
+
+    <section class="card">
+      <div class="field">
+        <span>😴 Sommeil (nuit dernière) ${synced('sleep')}</span>
+        <div class="stepper">
+          <button class="icon-btn" data-act="sleep" data-d="-0.5" aria-label="Moins">${ICON.minus}</button>
+          <strong>${day.sleep != null ? `${nf(day.sleep, 1)} h` : '—'}</strong>
+          <button class="icon-btn" data-act="sleep" data-d="0.5" aria-label="Plus">${ICON.plus}</button>
         </div>
-        <label class="field">
-          <span>👣 Pas</span>
-          <input class="input" inputmode="numeric" enterkeyhint="done" data-change="steps" value="${day.steps ?? ''}" placeholder="0">
-          ${progressBar((day.steps || 0) / p.stepsGoal)}
-          <small class="muted">Objectif ${nf(p.stepsGoal)}</small>
-        </label>
+        <small class="muted">Objectif ${nf(p.sleepGoal, 1)} h</small>
       </div>
     </section>
+
+    ${p.teethTracker ? `
+    <section class="card">
+      <div class="card-head"><h2>🪥 Brossage de dents</h2><span class="small muted">${teethStreak ? `🔥 ${plural(teethStreak, 'jour')} parfait${teethStreak > 1 ? 's' : ''}` : '3 fois par jour'}</span></div>
+      <div class="teeth-row">
+        ${TEETH_SLOTS.map((label, i) => `<button class="pill grow ${teeth[i] ? 'pill-ok' : ''}" data-act="teeth" data-i="${i}" aria-pressed="${!!teeth[i]}">${teeth[i] ? '✓ ' : ''}${label}</button>`).join('')}
+      </div>
+    </section>` : ''}
 
     ${habits.length ? `
     <section class="card">
@@ -149,11 +191,16 @@ export function render(root, ctx) {
       </div>
     </section>`;
 
-  const setField = (field, value, { fromInput = false } = {}) => {
+  // manual : la valeur saisie à la main ne sera plus remplacée par Connexion Santé
+  const setField = (field, value, { fromInput = false, manual = false } = {}) => {
     store.update((s) => {
       const d = store.ensureDay(key);
       if (value == null) delete d[field];
       else d[field] = value;
+      if (manual) {
+        d.manual = { ...d.manual, [field]: value != null };
+        if (d.sync) delete d.sync[field];
+      }
     }, { silent: fromInput });
     // depuis un champ texte : rendu différé pour ne pas avaler le prochain toucher
     if (fromInput) setTimeout(ctx.rerender, 250);
@@ -174,7 +221,7 @@ export function render(root, ctx) {
     },
     steps(el) {
       const v = parseNum(el.value);
-      setField('steps', v == null ? null : Math.max(0, Math.round(v)), { fromInput: true });
+      setField('steps', v == null ? null : Math.max(0, Math.round(v)), { fromInput: true, manual: true });
     },
     water(el) {
       setField('water', Math.max(0, water + Number(el.dataset.d)));
@@ -182,7 +229,41 @@ export function render(root, ctx) {
     },
     sleep(el) {
       const v = day.sleep == null ? p.sleepGoal : Math.min(14, Math.max(0, day.sleep + Number(el.dataset.d)));
-      setField('sleep', v);
+      setField('sleep', v, { manual: true });
+    },
+    teeth(el) {
+      const i = Number(el.dataset.i);
+      const next = [...teeth];
+      next[i] = !next[i];
+      setField('teeth', next);
+      if (next.every(Boolean)) toast('Les 3 brossages sont faits, bravo !', { icon: '🪥' });
+    },
+    async sync(el) {
+      el.disabled = true;
+      try {
+        const res = await syncHealth({ force: true });
+        toast(res?.changed ? 'Données mises à jour' : 'Déjà à jour', { icon: '🔄' });
+      } catch (e) {
+        toast(`Synchronisation impossible : ${e.message}`, { icon: '⚠️', duration: 5000 });
+      }
+      ctx.rerender();
+    },
+    async connectHealth() {
+      try {
+        const granted = await connectHealth();
+        toast(granted.steps || granted.sleep ? 'Connexion Santé connectée' : 'Accès refusé : tu peux le donner plus tard dans Réglages', { icon: '🔗', duration: 4000 });
+      } catch (e) {
+        toast(e.message, { icon: '⚠️', duration: 5000 });
+      }
+      ctx.rerender();
+    },
+    async enableReminders() {
+      const ok = await enableReminders();
+      toast(ok ? 'Rappels activés' : 'Notifications refusées : autorise-les dans les réglages Android', { icon: '🔔', duration: 4000 });
+      ctx.rerender();
+    },
+    dismissSetup() {
+      store.update((s) => (s.setupDismissed = true));
     },
     hok(el) {
       toggleOk(state.habits.find((h) => h.id === el.dataset.id), key);
